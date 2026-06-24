@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.1.0",
   "resources": {
     "augeas": {
       "name": "AugeasRes",
@@ -397,7 +397,7 @@
         "interface": {
           "name": "Interface",
           "type": "str",
-          "description": "Interface is interface to bind to. For example `eth0` for the common case. You may leave this field blank to not run any specific binding. BUG: https://github.com/insomniacslk/dhcp/issues/372"
+          "description": "Interface is interface to bind to. For example `meth0` for the common case. You may leave this field blank to not run any specific binding. BUG: https://github.com/insomniacslk/dhcp/issues/372"
         },
         "leasetime": {
           "name": "LeaseTime",
@@ -440,7 +440,7 @@
         "env": {
           "name": "Env",
           "type": "[]str",
-          "description": "Env is a list of environment variables. E.g. [\"VAR=val\",]."
+          "description": "Env is a list of environment variables. E.g. [\"VAR=val\"]."
         },
         "force": {
           "name": "Force",
@@ -455,7 +455,7 @@
         "ports": {
           "name": "Ports",
           "type": "map{str: map{int: int}}",
-          "description": "Ports is a map of port bindings. E.g. {\"tcp\" => {8080 => 80},}. The key is the host port, and the val is the inner service port to forward to."
+          "description": "Ports is a map of port bindings. E.g. {\"tcp\" => {8080 => 80}}. The key is the host port, and the val is the inner service port to forward to."
         },
         "state": {
           "name": "State",
@@ -593,11 +593,6 @@
           "type": "str",
           "description": "Shell is the (optional) shell to use to run the cmd. If you specify this, then you can't use the Args parameter. Note that unless you use absolute paths, or set the PATH variable, the shell might not be able to find the program you're trying to run."
         },
-        "timeout": {
-          "name": "Timeout",
-          "type": "int",
-          "description": "Timeout is the number of seconds to wait before sending a Kill to the running command. If the Kill is received before the process exits, then this be treated as an error."
-        },
         "user": {
           "name": "User",
           "type": "str",
@@ -622,6 +617,19 @@
           "name": "WatchShell",
           "type": "str",
           "description": "WatchShell is the Shell for the WatchCmd. See the docs for Shell."
+        }
+      }
+    },
+    "exit": {
+      "name": "ExitRes",
+      "kind": "exit",
+      "file": "exit.go",
+      "description": "ExitRes is a resource that tells mgmt to exit. If you're running as a service which automatically restarts on exit, you might cause a loop. Use this only if you really know what you're doing.",
+      "fields": {
+        "code": {
+          "name": "Code",
+          "type": "int",
+          "description": "Code specifies the exit (status) code to return. For portability, the status code should be in the range [0, 125]."
         }
       }
     },
@@ -685,6 +693,11 @@
           "name": "Recurse",
           "type": "bool",
           "description": "Recurse specifies if you want to work recursively on the resource. It is used when copying a source directory, or to determine if a watch should be recursive or not. When making a directory, this is required if you'd need the parent directories to be made as well. (Analogous to the `mkdir -p` option.)"
+        },
+        "selinux": {
+          "name": "SELinux",
+          "type": "str",
+          "description": "SELinux specifies the SELinux security context for the file."
         },
         "source": {
           "name": "Source",
@@ -944,6 +957,59 @@
         }
       }
     },
+    "http:client": {
+      "name": "HTTPClientRes",
+      "kind": "http:client",
+      "file": "http_client.go",
+      "description": "HTTPClientRes is an http client resource. The Name will be used as the destination file path if the File param is not specified and if Name is in the shape of a valid absolute path. This resource will not redownload a file if it already exists and has the same mtime or sha256sum as we expect it to. If this resource receives a \"refresh\" (edge) notification, then it will force a redownload. This resource sends the file contents as a send/recv edge. This resource can use an http long poll endpoint to receive events and know when a file has changed. If you attempt to use the Longpoll option with an endpoint which does not support that, then you may cause infinite looping. This resource publishes its response status and output file location to the local API bridge, so that a net/http.response(\"${name}\") function can read and watch the status and output data which changes over time as this resource downloads files. One interesting detail: while you could just write the file to a known location and read it via os.readfile, that would be usually worse since that would see filesystem (inotify) style events when it's written, rather than the safer, internal event system which notifies only once, and when the actual (precise) change occurs.",
+      "fields": {
+        "body": {
+          "name": "Body",
+          "type": "str",
+          "description": "Body is the body to use when sending your request. It can be nil."
+        },
+        "file": {
+          "name": "File",
+          "type": "str",
+          "description": "File is the output destination to write to if we download a file. It must be an absolute file path. If you don't specify this, then the Name will be used if it's a valid absolute file path. If no valid file path exists anywhere, then we only download to a temporary directory. We always download to a temporary directory anyways so that we can atomically rename when we complete successfully. As a result, if you don't particularly want to store a file somewhere, then make sure the $name you specify does not resemble an absolute file path which would begin with a slash and end without one."
+        },
+        "longpoll": {
+          "name": "Longpoll",
+          "type": "bool",
+          "description": "Longpoll specifies that the server supports http long polling. If the endpoint actually does not, then this will cause infinite looping... if specifying this option you must also specify one of the types of long polling that you're using. This should match what the server expects as this is an arbitrary contract on top of HTTP and not an explicit part of the protocol."
+        },
+        "longpoll_conditional": {
+          "name": "LongpollConditional",
+          "type": "bool",
+          "description": "LongpollConditional specifies that the server will need a second HTTP request with a `Prefer: wait=<seconds>` header to set up the long polling."
+        },
+        "longpoll_redirect": {
+          "name": "LongpollRedirect",
+          "type": "bool",
+          "description": "LongpollRedirect specifies that the server will use an HTTP redirect to notify you that the long poll is active and watching."
+        },
+        "method": {
+          "name": "Method",
+          "type": "str",
+          "description": "Method is the HTTP method (GET, POST, PUT, etc...) that is used. If you omit this then \"GET\" is used."
+        },
+        "mtime_check": {
+          "name": "MtimeCheck",
+          "type": "bool",
+          "description": "MtimeCheck specifies that we can attempt to avoid redownloading based on if the mtime that the server announces match what we already have on disk."
+        },
+        "sha256": {
+          "name": "Sha256",
+          "type": "str",
+          "description": "Sha256 is specified if you expect the file contents to have this hash."
+        },
+        "url": {
+          "name": "URL",
+          "type": "str",
+          "description": "URL is the endpoint to connect to. You may specify the protocol, username, password, port, and all the other variables."
+        }
+      }
+    },
     "http:server": {
       "name": "HTTPServerRes",
       "kind": "http:server",
@@ -997,6 +1063,11 @@
           "name": "Filename",
           "type": "str",
           "description": "Filename is the name of the file this data should appear as on the http server."
+        },
+        "longpoll": {
+          "name": "Longpoll",
+          "type": "bool",
+          "description": "Longpoll lets requests of this file be \"watchable\" via HTTP long poll which can be done via the http:client resource."
         },
         "path": {
           "name": "Path",
@@ -1263,7 +1334,7 @@
       "name": "NetRes",
       "kind": "net",
       "file": "net.go",
-      "description": "NetRes is a network interface resource based on netlink. It manages the state of a network link. Configuration is also stored in a networkd configuration file, so the network is available upon reboot. The name of the resource is the string representing the network interface name. This could be \"eth0\" for example. It supports flipping the state if you ask for it to be reversible.",
+      "description": "NetRes is a network interface resource based on netlink. It manages the state of a network link. Configuration is also stored in a networkd configuration file, so the network is available upon reboot. The name of the resource is the string representing the network interface name. This could be \"meth0\" for example. It supports flipping the state if you ask for it to be reversible.",
       "fields": {
         "addrs": {
           "name": "Addrs",
@@ -1365,6 +1436,11 @@
       "file": "pkg.go",
       "description": "PkgRes is a package resource for packagekit.\nIt will attempt to make automatic edges with the package name, unless Meta:autoedge is false. For the unique scenario where you are adding a new package repository, and then installing something from it, you will want to disable automatic edges, or this will fail to find the package during the Init stage before mgmt can even run and create the repo! As a result, add an edge between this and the repo creation stage, and avoid graph errors!",
       "fields": {
+        "allowdowngrade": {
+          "name": "AllowDowngrade",
+          "type": "bool",
+          "description": "AllowDowngrade specifies if we want to allow a lower package version to be installed when State is set to a specific version string."
+        },
         "allownonfree": {
           "name": "AllowNonFree",
           "type": "bool",
@@ -1391,7 +1467,7 @@
       "name": "PrintRes",
       "kind": "print",
       "file": "print.go",
-      "description": "PrintRes is a resource that is useful for printing a message to the screen. It will also display a message when it receives a notification. It supports automatic grouping.",
+      "description": "PrintRes is a resource that is useful for printing a message to the screen. It will also display a message when it receives a notification. It supports automatic grouping. When it displays a \"different\" message that what it had done previously, this is considered a state change. As a result it can even send a notification, and it will also internally see such a change as a new Watch event! This is mostly for consistency with the other resources and is not expected to be especially useful for anything other than learning mgmt!",
       "fields": {
         "msg": {
           "name": "Msg",
@@ -1419,12 +1495,12 @@
         "namespace": {
           "name": "Namespace",
           "type": "str",
-          "description": "Namespace represents the namespace key to use. If it is not specified, the Name value is used instead."
+          "description": "Namespace represents the namespace key to use. If it is not specified, the Name value is used instead. You must *not* run two of these resources on the same host at the same time with the same namespace value. This field exists as a luxury, but it's safer to use the name field instead which will guarantee namespace uniqueness. If you break this rule, then the behaviour is undefined and you may even cause concurrency races, deadlocks, or panics."
         },
-        "reuse": {
-          "name": "Reuse",
+        "persist": {
+          "name": "Persist",
           "type": "bool",
-          "description": "Reuse specifies that we reuse the client lease on reconnect. If reuse is false, then on host disconnect, that hosts entry will immediately expire, and the scheduler will react instantly and remove that host entry from the list. If this is true, or if the host closes without a clean shutdown, it will take the TTL number of seconds to remove the entry."
+          "description": "Persist specifies that we should not remove the scheduled value on disappear or disconnect. In that situation it will persist indefinitely if the TTL is 0, otherwise it should expire when the TTL does. If this is false, then when the *host* disconnects by clean shutdown, then the key will be removed. If the host closes without a clean shutdown, it will take the TTL number of seconds to remove the entry. This differs from the resource disappearing during a graph swap. To remove an entry in that case, use with the `Withdraw` param or the reversal mechanism."
         },
         "strategy": {
           "name": "Strategy",
@@ -1434,7 +1510,7 @@
         "ttl": {
           "name": "TTL",
           "type": "int",
-          "description": "TTL is the time to live for added scheduling \"votes\". If this value is nil or, undefined, then a default value is used. See the `Reuse` entry for more information."
+          "description": "TTL is the time to live for added scheduling \"votes\". If this value is nil or, undefined, then a default value is used. See the `Persist` entry for more information."
         },
         "withdraw": {
           "name": "Withdraw",
@@ -1755,6 +1831,11 @@
           "name": "ValidateError",
           "type": "str",
           "description": ""
+        },
+        "waitforerror": {
+          "name": "WaitForError",
+          "type": "int",
+          "description": ""
         }
       }
     },
@@ -1790,7 +1871,7 @@
       "name": "TFTPServerRes",
       "kind": "tftp:server",
       "file": "tftp.go",
-      "description": "TFTPServerRes is a tftp server resource. It serves files, but does not actually apply any state. The name is used as the address to listen on, unless the Address field is specified, and in that case it is used instead. This resource can offer up files for serving that are specified either inline in this resource by specifying a tftp root, or as tftp:file resources which will get autogrouped into this resource at runtime. The two methods can be combined as well.",
+      "description": "TFTPServerRes is a tftp server resource. It serves files, but does not actually apply any state. The name is used as the address to listen on, unless the Address field is specified, and in that case it is used instead. This resource can offer up files for serving that are specified either inline in this resource by specifying a tftp root, or as tftp:file resources which will get autogrouped into this resource at runtime. The two methods can be combined as well. The resource does *not* start serving until CheckApply for the resource runs.",
       "fields": {
         "address": {
           "name": "Address",
@@ -1826,7 +1907,7 @@
       "name": "UserRes",
       "kind": "user",
       "file": "user.go",
-      "description": "UserRes is a user account resource.",
+      "description": "UserRes is a user account resource. Managing POSIX users and groups is sneaky and annoying. It turns out that you can't *just* create a user without any group.",
       "fields": {
         "allowduplicateuid": {
           "name": "AllowDuplicateUID",
@@ -2243,6 +2324,22 @@
       "description": "BootstrapPackages returns the list of packages corresponding to the distro for bootstrapping new machines which will need these installed before they can run mgmt.",
       "signature": "func(0 str) []str"
     },
+    "deploy.directory": {
+      "name": "DirectoryFunc",
+      "package": "deploy",
+      "func": "directory",
+      "file": "deploy/directory.go",
+      "description": "DirectoryFunc is a function that reads the full contents of a directory from our deploy. It puts them into a private temporary directory and returns that path. The returned path will be an absolute directory path. The directory contents can only change with a new deploy, so this is static. This function effectively causes a double copy of the file contents, so only use this as a last resort.\ncautious at least until there is a better cleanup story here.",
+      "signature": "func(directory str) str"
+    },
+    "deploy.file_exists": {
+      "name": "FileExistsFunc",
+      "package": "deploy",
+      "func": "file_exists",
+      "file": "deploy/file_exists.go",
+      "description": "FileExistsFunc is a function that returns if a deployed file exists or not. This works with directories too. The file existence can only change with a new deploy, so this is static. Please note that this is different from the file_exists function in the os package.",
+      "signature": "func(filename str) bool"
+    },
     "deploy.readfile": {
       "name": "ReadFileFunc",
       "package": "deploy",
@@ -2549,14 +2646,14 @@
       "package": "golang",
       "func": "template",
       "file": "golang/template.go",
-      "description": "TemplateFunc is a static polymorphic function that compiles a template and returns the output as a string. It bases its output on the values passed in to it. It examines the type of the second argument (the input data vars) at compile time and then determines the static functions signature by including that in the overall signature. but only if they are not pure. We currently only use simple, pure functions."
+      "description": "TemplateFunc is a static polymorphic function that compiles a template and returns the output as a string. It bases its output on the values passed in to it. It examines the type of the second argument (the input data vars) at compile time and then determines the static functions signature by including that in the overall signature. Every struct field in a template is accessed by its Title-cased representation. but only if they are not pure. We currently only use simple, pure functions."
     },
     "golang/html.escape_string": {
       "name": "HTMLEscapeString",
       "package": "golang/html",
       "func": "escape_string",
       "file": "https://pkg.go.dev/html#HTMLEscapeString",
-      "description": "HTMLEscapeString is an autogenerated function. func EscapeString(s string) string EscapeString escapes special characters like \"<\" to become \"&lt;\". It escapes only five such characters: <, >, &, ' and \". UnescapeString(EscapeString(s)) == s always holds, but the converse isn't always true.",
+      "description": "HTMLEscapeString is an autogenerated function. func EscapeString(s string) string EscapeString escapes special characters like \"<\" to become \"&lt;\". It escapes only five such characters: <, >, &, ' and \". [UnescapeString](EscapeString(s)) == s always holds, but the converse isn't always true.",
       "signature": "func(s str) str"
     },
     "golang/html.unescape_string": {
@@ -2564,7 +2661,7 @@
       "package": "golang/html",
       "func": "unescape_string",
       "file": "https://pkg.go.dev/html#HTMLUnescapeString",
-      "description": "HTMLUnescapeString is an autogenerated function. func UnescapeString(s string) string UnescapeString unescapes entities like \"&lt;\" to become \"<\". It unescapes a larger range of entities than EscapeString escapes. For example, \"&aacute;\" unescapes to \"á\", as does \"&#225;\" and \"&#xE1;\". UnescapeString(EscapeString(s)) == s always holds, but the converse isn't always true.",
+      "description": "HTMLUnescapeString is an autogenerated function. func UnescapeString(s string) string UnescapeString unescapes entities like \"&lt;\" to become \"<\". It unescapes a larger range of entities than [EscapeString] escapes. For example, \"&aacute;\" unescapes to \"á\", as does \"&#225;\" and \"&#xE1;\". UnescapeString([EscapeString](s)) == s always holds, but the converse isn't always true.",
       "signature": "func(s str) str"
     },
     "golang/math.abs": {
@@ -3212,7 +3309,7 @@
       "package": "golang/os",
       "func": "readlink",
       "file": "https://pkg.go.dev/os#Readlink",
-      "description": "OsReadlink is an autogenerated function. func Readlink(name string) (string, error) Readlink returns the destination of the named symbolic link. If there is an error, it will be of type *PathError.\nIf the link destination is relative, Readlink returns the relative path without resolving it to an absolute one.",
+      "description": "OsReadlink is an autogenerated function. func Readlink(name string) (string, error) Readlink returns the destination of the named symbolic link. If there is an error, it will be of type [*PathError].\nIf the link destination is relative, Readlink returns the relative path without resolving it to an absolute one.",
       "signature": "func(name str) str"
     },
     "golang/os.temp_dir": {
@@ -3452,7 +3549,7 @@
       "package": "golang/runtime",
       "func": "gomaxprocs",
       "file": "https://pkg.go.dev/runtime#GOMAXPROCS",
-      "description": "RuntimeGOMAXPROCS is an autogenerated function. func GOMAXPROCS(n int) int GOMAXPROCS sets the maximum number of CPUs that can be executing simultaneously and returns the previous setting. It defaults to the value of [runtime.NumCPU]. If n < 1, it does not change the current setting. This call will go away when the scheduler improves.",
+      "description": "RuntimeGOMAXPROCS is an autogenerated function. func GOMAXPROCS(n int) int GOMAXPROCS sets the maximum number of CPUs that can be executing simultaneously and returns the previous setting. If n < 1, it does not change the current setting.\n# Default\nIf the GOMAXPROCS environment variable is set to a positive whole number, GOMAXPROCS defaults to that value.\nOtherwise, the Go runtime selects an appropriate default value from a combination of - the number of logical CPUs on the machine, - the process’s CPU affinity mask, - and, on Linux, the process’s average CPU throughput limit based on cgroup CPU quota, if any.\nIf GODEBUG=containermaxprocs=0 is set and GOMAXPROCS is not set by the environment variable, then GOMAXPROCS instead defaults to the value of [runtime.NumCPU]. Note that GODEBUG=containermaxprocs=0 is [default] for language version 1.24 and below.\n# Updates\nThe Go runtime periodically updates the default value based on changes to the total logical CPU count, the CPU affinity mask, or cgroup quota. Setting a custom value with the GOMAXPROCS environment variable or by calling GOMAXPROCS disables automatic updates. The default value and automatic updates can be restored by calling [SetDefaultGOMAXPROCS].\nIf GODEBUG=updatemaxprocs=0 is set, the Go runtime does not perform automatic GOMAXPROCS updating. Note that GODEBUG=updatemaxprocs=0 is [default] for language version 1.24 and below.\n# Compatibility\nNote that the default GOMAXPROCS behavior may change as the scheduler improves, especially the implementation detail below.\n# Implementation details\nWhen computing default GOMAXPROCS via cgroups, the Go runtime computes the \"average CPU throughput limit\" as the cgroup CPU quota / period. In cgroup v2, these values come from the cpu.max file. In cgroup v1, they come from cpu.cfs_quota_us and cpu.cfs_period_us, respectively. In container runtimes that allow configuring CPU limits, this value usually corresponds to the \"CPU limit\" option, not \"CPU request\".\nThe Go runtime typically selects the default GOMAXPROCS as the minimum of the logical CPU count, the CPU affinity mask count, or the cgroup CPU throughput limit. However, it will never set GOMAXPROCS less than 2 unless the logical CPU count or CPU affinity mask count are below 2.\nIf the cgroup CPU throughput limit is not a whole number, the Go runtime rounds up to the next whole number.\nGOMAXPROCS updates are performed up to once per second, or less if the application is idle.\n[default]: https://go.dev/doc/godebug#default",
       "signature": "func(n int) int"
     },
     "golang/runtime.goroot": {
@@ -3895,6 +3992,14 @@
       "description": "FilterFunc is the standard filter iterator function that runs a function on each element in a list. That function must return true to keep the element, or false otherwise. The function then returns a list with the subset of kept elements from the input list. This implements the signature: `func(inputs []?1, function func(?1) bool) []?1` instead of the alternate with the two input args swapped, because while the latter is more common with languages that support partial function application, the former variant that we implemented is much more readable when using an inline lambda.",
       "signature": "func(inputs []?1, function func(name-which-can-vary-over-time ?1) bool) []?1"
     },
+    "iter.flatten": {
+      "name": "FlattenFunc",
+      "package": "iter",
+      "func": "flatten",
+      "file": "iter/flatten.go",
+      "description": "FlattenFunc is a function that takes a list of lists and concatenates them into a single list, in order. Unlike list.concat, which takes a fixed number of list arguments specified at compile time, this works on a dynamic outer list whose length can vary at runtime. It composes naturally with iter.map to produce a flatMap-style operation.",
+      "signature": "func(inputs [][]?1) []?1"
+    },
     "iter.map": {
       "name": "MapFunc",
       "package": "iter",
@@ -3909,6 +4014,21 @@
       "func": "range",
       "file": "iter/range.go",
       "description": "RangeFunc is a function that ranges over elements on a list according to three possible inputs: start, stop, and step. At least one input is needed, and in that case it's mapped to be the stop argument. Start is used for the function to build lists which start from a chosen number, and step to filter its contents to a subset of all the numbers between start and stop. This function only takes ints as inputs, and outputs a list of ints."
+    },
+    "iter.reduce": {
+      "name": "ReduceFunc",
+      "package": "iter",
+      "func": "reduce",
+      "file": "iter/reduce.go",
+      "description": "ReduceFunc is the standard reduce iterator function that runs a function on the first pair of elements in a list and then runs the function again with the output of the first computation and the next element. At the end of this chain, the final result is returned. This is the standard \"left fold\" variant, if you want the \"right fold\" variant, you can invert the input list. If the list only has one element, then that is returned directly without running the computation. If the input list is empty than one of two possibilities exist. If you've used the two argument variant of this function, then the function will error. If you've used the three argument variant, then the function will return the \"initial value\" element. This value is also used for the first pair-wise function element computation if it exists. This function is sometimes known as \"fold\". This implements the signature: `func(inputs []?1, function func(?1, ?1) ?1) ?1` or: `func(initval ?1, inputs []?1, function func(?1, ?1) ?1) ?1` instead of the alternate scenarios with the arguments in the reverse order, because while the latter are more common with languages that support partial function application, the former variants that we implemented are much more readable when using an inline lambda."
+    },
+    "iter.zip": {
+      "name": "ZipFunc",
+      "package": "iter",
+      "func": "zip",
+      "file": "iter/zip.go",
+      "description": "ZipFunc is the standard zip iterator function that walks two input lists in lockstep, applying a two-argument function to each pair of elements, and returning the resulting list. If the two lists differ in length, the output is truncated to the shorter of the two, which matches the behaviour of the standard zip in most languages. There is no requirement that the two input element types or the output element type match. This implements the signature `func(inputs1 []?1, inputs2 []?2, function func(?1, ?2) ?3) []?3` instead of the alternate with the input args at the end, because while the latter is more common with languages that support partial function application, the former variant that we implemented is much more readable when using an inline lambda.",
+      "signature": "func(inputs1 []?1, inputs2 []?2, function func(x ?1, y ?2) ?3) []?3"
     },
     "len": {
       "name": "Len",
@@ -4091,6 +4211,14 @@
       "description": "CidrToPrefix returns the prefix from a CIDR address. For example, if you give us 192.0.2.0/24 then we will return \"24\" as a string.",
       "signature": "func(a str) str"
     },
+    "net.ip_in_cidr": {
+      "name": "IPInCidr",
+      "package": "net",
+      "func": "ip_in_cidr",
+      "file": "net/ip_in_cidr.go",
+      "description": "IPInCidr returns true if the input ip is part of a CIDR network. If either value is invalid this errors.",
+      "signature": "func(ip str, cidr str) bool"
+    },
     "net.is_mac": {
       "name": "IsMac",
       "package": "net",
@@ -4123,6 +4251,14 @@
       "description": "OldMacFmt takes a MAC address with colons and converts it to a format with hyphens. This is the old deprecated style that nobody likes.",
       "signature": "func(a str) str"
     },
+    "net.split_hostport": {
+      "name": "SplitHostPort",
+      "package": "net",
+      "func": "split_hostport",
+      "file": "net/split_hostport.go",
+      "description": "SplitHostPort takes an input as a string, and splits it into host and port. The function will error out if the given input doesn't contain a valid host port pair, as this is a requirement of the underlying library.",
+      "signature": "func(0 str) struct{host str; port str}"
+    },
     "net.url_parser": {
       "name": "URLParser",
       "package": "net",
@@ -4130,6 +4266,14 @@
       "file": "net/url_parser.go",
       "description": "URLParser takes a URL as a string, and extracts the different components of the URL: scheme, host, path, and query. The function will error out if the given URL doesn't contain a valid URL, as this is a requirement of the underlying net/url library. Note that additional fields may be added to the output in the future.",
       "signature": "func(0 str) struct{scheme str; host str; path str; raw_query str}"
+    },
+    "net/http.response": {
+      "name": "ResponseFunc",
+      "package": "net/http",
+      "func": "response",
+      "file": "net/http/response.go",
+      "description": "ResponseFunc is a function that returns the live response data of an http client resource. It takes the uid (the name of the http:client resource) and returns a struct of {status int; output str} which changes over time as that resource downloads a file. The status is zero until something happens, -1 if the resource hit an engine-level error, or otherwise the HTTP status code (eg: 200). The output is the downloaded body, and it is read lazily from disk each time so that we don't keep a second copy of the data in memory. Use this function instead of os.readfile because: while you could just write the file to a known location and read it via os.readfile, that would be usually worse since that would see filesystem (inotify) style events when it's written, rather than the safer, internal event system which notifies only once, and when the actual (precise) change occurs.",
+      "signature": "func(uid str) struct{status int; output str}"
     },
     "os.args": {
       "name": "Args",
@@ -4234,6 +4378,14 @@
       "file": "os/readfilewait.go",
       "description": "ReadFileWaitFunc is a function that reads the full contents from a local file. If the file contents change or the file path changes, a new string will be sent. This is different from the normal readfile in that if will not error if the file doesn't exist. If the file is not found, it returns the empty string. If the file re-appears, it returns those new contents. This function will eventually be deprecated when the function graph error system is stable.",
       "signature": "func(filename str) str"
+    },
+    "os.release": {
+      "name": "Release",
+      "package": "os",
+      "func": "release",
+      "file": "os/distro.go",
+      "description": "Release parses /etc/os-release and returns a struct containing the id, version_id, and variant_id.",
+      "signature": "func() struct{id str; variant_id str; version_id str}"
     },
     "os.system": {
       "name": "SystemFunc",
@@ -4538,6 +4690,14 @@
       "file": "test/oneinstance.go",
       "description": "OneInstance is a fact which flips a bool repeatedly. This is an example fact and is not meant for serious computing. This would be better served by a flip function which you could specify an interval for.",
       "signature": "func() str"
+    },
+    "test.one_stream": {
+      "name": "OneStreamFunc",
+      "package": "test",
+      "func": "one_stream",
+      "file": "test/onestream_func.go",
+      "description": "OneStreamFunc is a func that takes a single input, and returns a single value once. It is used to test that we don't send too many values or any values too early.",
+      "signature": "func(count int) str"
     },
     "util.hostname_mapper": {
       "name": "HostnameMapper",
