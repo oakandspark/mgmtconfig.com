@@ -22,7 +22,7 @@ Objectives: Introduce new folks to mgmt - its purpose, etc.
     -
 - Features of mgmt config
     - fast: mgmt will perform multiple tasks simultaneously, ensuring that your systems reach their desired state more quickly. (ordering, relationships)
-    - batching: mgmt will group similar operations together in order to improve performance. mgmt calls this “auto e
+    - batching: mgmt will group similar operations together in order to improve performance. mgmt calls this “auto grouping"
     - reactive: it observes your system in real-time and responds to correct for any deviations (chapter: functions and resources)
 
 ## Programming mgmt with mcl
@@ -138,9 +138,9 @@ Remote or local? It depends! mgmt resources do not have a concept of local or re
 
 Like files, you will also likely be managing packages and services with mgmt. Here's a few examples:
 
-##### Packages
+### Packages
 
-This example showcases features not yet discussed: autogrouping and lists.
+This example showcases introduces two mgmt features: autogrouping and lists.
 
 ```puppet { .m-2 }
 # Ensure two different packages are installed
@@ -169,7 +169,7 @@ This installed our packages, and mgmt did some extra optimization for us! In thi
 
 You can test mgmt's reflexes by removing the `cowsay` package and watching mgmt respond by reinstalling it.
 
-This example has one last important thing to share! You are likely to be configuring many packages, often with the same params. In cases like this, you can provide a list of names in the _name_ part of the resource description:
+This example has one last important thing to share! You may configure many packages, often with the same params. In cases like this, you can provide a list of names in the _name_ part of the resource description:
 
 ```puppet { .m-2 }
 pkg ["tmux", "cowsay"] {
@@ -179,7 +179,7 @@ pkg ["tmux", "cowsay"] {
 Types of values like strings and lists will be covered in a later section.
 
 
-##### Services
+### Services
 
 ```puppet { .m-2 }
 svc "sshd" {
@@ -200,7 +200,7 @@ $ sudo mgmt run lang first-service.mcl
 
 We've seen that resources described in _mcl_ will instruct mgmt on what to observe and what the desired state is for each resource. Your desired state may include hundreds or thousands of resources.
 
-When configurating a system, you'll often need steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the config file ever changes, you want to notify the service of that change, right?
+When configurating a system, you'll often need steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the config file ever changes, you want to notify the service of that change, right? We can't manage a service that doesn't exist yet because the package hasn't been installed.
 
 🌶️ Special sauce: In mgmt, **all resources are executed in concurrently**. This allows mgmt to resolve as much as possible in the shortest amount of time. There is no order unless you describe order.
 
@@ -220,7 +220,7 @@ If you need order, you can impose order on resources by defining relationships b
         - order relationship: Depend, Before
 - Question: how to know what Notify does to a resource? (Is this documented?)
 
-Visualizing these relationships, we can start to see
+Visualizing these relationships, we can start to see a structure take shape. This structure is called a graph, and it is how mgmt represents and executes your infrasturcture.
 
 examples…
 
