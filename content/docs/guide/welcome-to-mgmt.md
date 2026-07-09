@@ -212,7 +212,9 @@ If you need order, you can impose order on resources by defining relationships b
 
 Relationships can be expressed two different ways in mcl, and both ways are equivalent. Use whichever is most convenient for you.
 
-For the examples below, we will consider two resources and their relationship: An sshd package and sshd service.
+For the examples below, we will consider two resources and their relationship: An sshd package and sshd service. We can imagine them visually:
+
+![A diagram showing two boxes with an arrow between them. Each box represents one resource](relationship-pkg-svc.svg)
 
 ## Relationships using arrow `->` operator
 
@@ -258,13 +260,13 @@ svc "sshd" {
 }
 ```
 
-Each relationship requires only one definition. That is, you can use an arrow, or one _Before_, or one _Depend_.
+Each relationship requires only one definition. That is, you can use an arrow, or one _Before_, or one _Depend_, for a single relationship.
 
 ## Relationship Rejections
 
-All relationships have a single direction, as in "A before B" or "B after A". 
+All relationships have a direction, as in "A before B" or "B after A". 
 
-mgmt will not allow loops in relationships, such as (A before B, B before C, C before A). A relationship loop is called a "cycle" and mgmt will report an error. Here's a small example:
+mgmt will not allow a relationship to create a loop, such as (A before B, B before C, C before A). A relationship loop is called a "cycle" and mgmt will report an error. Here's a simple example of a cycle:
 
 ```puppet { .m-2 }
 file "/tmp/hello.txt" { }
@@ -273,7 +275,11 @@ File["/tmp/hello.txt"] -> File["/tmp/world.txt"]
 File["/tmp/world.txt"] -> File["/tmp/hello.txt"]
 ```
 
-Running this, mgmt will show an error:
+Visually, we can imagine it with two arrows (edges) in each direction between two resources:
+
+![A diagram showing two boxes with two arrows between, each going a different direction. each box represents one resource](relationship-cycle-example.svg)
+
+Because both files want to be "before" each other, we have a loop with no beginning or end, and mgmt will show an error:
 
 ```text { .m-2 }
 16:53:02 gapi exited with error: not a dag
@@ -282,20 +288,83 @@ resource graph has cycles
 
 ## not a dag? cycles?
 
-If we visualize these resources and relationships, we can start to see a structure take shape. This structure is called a graph, and it is how mgmt represents and executes your infrastructure.
+The visuals above show small examples of a structure called a graph, and it is how mgmt represents and executes your infrastructure. Graphs have vertexes and edges, and here's how those concepts map to what we've learned about mgmt, so far:
 
-> XXX: Put a small diagram here?
-
-A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a math and computer science term that describes a graph (a data structure with vertexes and edges) with a requirement that edges have a direction and that a edges are not allowed to form a path through the graph that allows a loop, or cycle. 
-
-Here's how those graph concepts map to what we've learned in mgmt:
-
-* Vertex: A resource
-* Edge: A relationship between two resources
+* Vertex: A resource, like a file or pkg.
+* Edge: A relationship between two resources.
 * Direction: The arrow `->` operator and Before/Depend params
 
+A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a math and computer science term that describes a graph where all edges have a direction and are not allowed to form a path through the graph that allows a loop, or cycle. 
 
-## Reusable Parts + Composition
+## Programming:
+
+This section introduces built-in functions, variables, and conditionals and uses them to address differences between Linux distributions.
+
+So far, we’ve been describing a single desired state - in essence, the resource graph has been static, or unchanging, throughout mgmt's life and remains the same no matter where it runs. Let's do more!
+
+_mcl_ allows decision-making that change the resource graph. An example above even hinted at the need for this, "other linux distros may use different names" for packages and services.
+
+For our ssh service, Fedora calls it "sshd", and Debian calls it "ssh".
+
+To solve our problem, we will import and use a built-in function, [`os.release`](../../../docs/functions/#os.release), to determine our Linux distribution and use that information to decide which service name to use. 
+
+
+```puppet { .m-2 }
+# Tell mgmt to let us use 'os' functions
+import "os"
+
+# Store the os release information in the $release variable
+# This information is a 'struct' that has an "id" field
+# The "id" field is a string containing an OS identifier
+$release = os.release()
+
+if $release->id == "fedora" {
+  # Fedora calls this service "sshd"
+  svc "sshd" {
+    startup => "enabled",
+    state => "running",
+  }
+} 
+
+# Handle both Debian and Ubuntu the same way:
+if $release->id == "debian" or $release->id == "ubuntu" {
+  # Debian calls this service "ssh"
+  svc "ssh" {
+    startup => "enabled",
+    state => "running",
+  }
+}
+```
+
+Our _mcl_ above will produce a different resource graph depending on what machine it runs on.
+
+### Variables
+
+We used the variable, `$release`, to store the result of `os.release()` function. Variables are a way to store and reuse values, and can be used in a variety of places in your _mcl_:
+
+* Assignment: `$name = "James"`
+* As a resource name: `user $name { ... }`
+* As a resource param: `file "/var/cache/james" { owner => $name, }`
+* Inside a string: `"Hello, ${name}"`
+
+TBD:
+* Variable scope
+* Briefly, types: string, number, struct, map
+
+- Variables
+    - Variable scope TBD
+    - Types:
+        - Brief, for now: string, number
+        - mgmt enforces strict types; you can’t give a number to something expecting a string. Doing so will show an error: <Give example>
+
+- Functions
+    - Example: Formatting strings
+    - Compute values, or observe a thing (like readfile)
+        - Question: Can I claim that functions have no side effects?
+    - Values: Can be a stream, such as the function that reads a file’s contents, and the value changes when the file content changes.
+        - Question: how to know if a function streams or is single value?
+
+## Reusable and Composable Parts
 
 *This section shall introduce: variables and string interpolation.*
 
@@ -306,32 +375,7 @@ Syntax: `class <name> { ... }`
 Examples:
 
 - Class: Reuse
-- Module: maybe msyql? Module installs mysql, provides a mysql:user class?
-
-## Programming:
-
-So far, we’ve been describing a single desired state - in essence, the description has been static.
-
-The mgmt language (mcl) enables dynamic decisions that change the desired state. We’ve already seen some of this in action with classes and modules (above), and you can take it further by telling mgmt how to control what resources exist, their parameters, and more.
-
-- Variables
-    - Assigning: `$name = "James"`
-    - Using in as a resource name: `user  $name { ... }`
-    - Using in a parameter `parameter => $varname,`
-    - Using inside a string “whatever ${varname}”
-    - Variable scope TBD
-    - Types:
-        - Brief, for now: string, number
-        - mgmt enforces strict types; you can’t give a number to something expecting a string. Doing so will show an error: <Give example>
-- Functions
-    - Example: Formatting strings
-    - Compute values, or observe a thing (like readfile)
-        - Question: Can I claim that functions have no side effects?
-    - Values: Can be a stream, such as the function that reads a file’s contents, and the value changes when the file content changes.
-        - Question: how to know if a function streams or is single value?
-- Conditionals
-    - It’s not really “flow control” because it’s not imperative, it’s declarative… what term to use?
-    - These are living/dynamic just like resources and functions.
+- Module: out of scope for this document
 
 
 ----
@@ -343,8 +387,11 @@ These are all beyond "day one" success education, so I have excluded them:
 * send/recv
 * notification: Notify/Listen
 * Meta parameters
-* export/collect
-* modules
+* Exported resources
+* modules, import
+* deploy
+* etcd
+
 
 # outline
 
@@ -376,15 +423,4 @@ These are all beyond "day one" success education, so I have excluded them:
     - Language Features
         - Writing your own functions
         - The type system?
-- (out of scope, maybe for later)
-    - mgmt deploy
-        - from “mgmt run lang’ to ‘mgmt deploy lang’
-        - etcd: seeds and servers.
-        - git vs no git
-    - mgmt execution behaviors, like auto grouping, etc?
-    - modules
-    - clustering (etcd, etc)
-    - passing data between machines
-        - external lookup/streaming functions?, value+kv resources, send/recv
-
 
