@@ -6,8 +6,7 @@ Objectives: Introduce new folks to mgmt - its purpose, etc.
 >
 > - A gradual introduction with each section building on the previous.
 > - Examples at the end of each section demonstrating what was just covered.
-> - Avoiding jargon, especially internal implementation details, such as “DAG”, unless absolutely necessary. As an example, [Elm](https://guide.elm-lang.org) does a fantastic job of explaining how to use a functional programming language *without* burdening the reader in high-level mathematical terms that are unavoidable in language docs like Haskell. It’s OK to refer to these technical terms, “in mgmt, this is called <x>”
-</aside>
+> - Avoiding jargon, especially internal implementation details, such as “DAG”, unless absolutely necessary. As an example, [Elm](https://guide.elm-lang.org) does a fantastic job of explaining how to use a functional programming language *without* burdening the reader in high-level mathematical terms that are unavoidable in language docs like Haskell. It’s OK to refer to these technical terms, “in mgmt, this is called x”
 
 > ⚠️ XXX: Review for consistent use of terminology:
 > - Verbs:  a resource *executes*, right?
@@ -25,18 +24,18 @@ Objectives: Introduce new folks to mgmt - its purpose, etc.
     - batching: mgmt will group similar operations together in order to improve performance. mgmt calls this “auto grouping"
     - reactive: it observes your system in real-time and responds to correct for any deviations (chapter: functions and resources)
 
-## Programming mgmt with mcl
+# Programming mgmt with mcl
 
 mcl is the language we use to program our desired state. mcl is strongly-typed, functional language <etc etc…>
 
 This guide will teach you how to use mcl in mgmt and how mgmt behaves.
 
-### Resources
+## Resources
 
 Configuration is described with an element called a **resource**.
 Most kinds of resources in mgmt will be familiar to you and are intended to align with your mental model of your infrastructure: ensuring that a package is installed, a service is disabled, or a user exists.
 
-Resources have three parts: a kind, a name, and params (parameters). For example, the following example code shows a single file _resource_:
+Resources have three parts: a kind, a name, and parameters (mgmt calls these 'params'). The following example code shows a single file _resource_:
 
 ```puppet { .m-2 }
 
@@ -52,9 +51,9 @@ You describe the desired state in each resource, and mgmt makes it real by obser
 
 Keyword: When all resources reach the desired state, **mgmt calls this outcome "converged".**
 
-This _mcl_ code can be executed by mgmt: `mgmt run lang <path>`. mgmt will normally write its logs to stdout, so the execution of our file resource will appear like this:
+Our _mcl_ code can be executed in mgmt: `mgmt run lang <path>`. Mgmt will normally write its logs to stdout, so the execution of our file resource will appear like this:
 
-```text { .m-2 linenos=inline }
+```text { .m-2 }
 $ mgmt run lang hello.mcl
 
 ... ( other output omitted for brevity ) ...
@@ -62,10 +61,10 @@ $ mgmt run lang hello.mcl
 10:28:48 engine: file[/tmp/hello.txt]: copy 21 bytes
 ```
 
-Notice that:
+When you run this, notice the following:
 * mgmt did not exit after converging (more on this in the next section)
 * mgmt can run as any user, but that user will correct permissions in order to execute some resources.
-* The first part '10:28:48' is a timestamp, and yours will be different than the ones in these example.
+* The first part '10:28:48' is a timestamp, and your timestamps will be different.
 
 Let's verify that our file was created correctly, and run the following in another terminal:
 
@@ -87,12 +86,14 @@ $ rm /tmp/hello.txt
 
 # Change the file's contents
 $ echo "mgmt is fast" > /tmp/hello.txt
+
+# mgmt notices and responds:
 10:37:18 engine: file[/tmp/hello.txt]: copy 21 bytes
 ```
 
-You can terminate mgmt in your terminal by pressing Ctrl+C.
+You can terminate mgmt in your terminal by pressing ctrl+c.
 
-Each time, mgmt has noticed that the desired state has diverged (the file was removed, or the contents were modified) and it takes action immediately to resolve it.
+Each time we removed or modified the file, mgmt notices that the file has diverged from its desired state, and it takes action immediately to resolve it.
 
 Resource definition syntax in mcl looks like this:
 
@@ -111,9 +112,9 @@ kind "name" {
 http:server "127.0.0.1:8080" { }
 ```
 
-💡 _What’s in a name?_  Many resources will use the name as a default value for a param. The file resource will use name default value for the `path` param.
+💡 _What’s in a name?_  Many resources use the name as a default value for a param. The file resource uses name as the default value for the `path` param.
 
-⚠️Syntax Caution: Every param in a resource must have a trailing comma, including the last one.
+⚠️Syntax Caution: In a resource, every param must have a trailing comma, including the last one.
 
 The example above can also be written with a different name and setting the path explicitly:
 
@@ -128,9 +129,9 @@ file "a greeting" {
 mgmt has many kinds of resources, such as 
 [pkg](/docs/resources/#pkg) for packages, 
 [exec](/docs/resources/#exec) for running other programs, 
-[svc](/docs/resources/#svc) for managing service.
+[svc](/docs/resources/#svc) for managing service. Check out [the resources reference for more](/docs/resources/)
 
-Remote or local? It depends! mgmt resources do not have a concept of local or remote. While _file_ and _pkg_ will execute locally on a machine, some resources will involve remote services, such as an ec2 instance resource.
+Can resources be remote or only local? mgmt resources do not have a concept of local or remote. While _file_ and _pkg_ will execute locally on a machine, some resources will involve remote services, such as an ec2 instance resource. You can even export resource definitions from one mgmt to be executed by mgmt on another machine.
 
 > ⁉️Questions for the editor 
 > 
@@ -138,7 +139,7 @@ Remote or local? It depends! mgmt resources do not have a concept of local or re
 
 Like files, you will also likely be managing packages and services with mgmt. Here's a few examples:
 
-### Packages
+## Packages
 
 This example showcases introduces two mgmt features: autogrouping and lists.
 
@@ -165,7 +166,7 @@ $ sudo mgmt run lang first-package.mcl
 19:00:25 engine: pkg[tmux]: Set(installed) success: pkg[autogroup:(tmux,cowsay)]
 ```
 
-This installed our packages, and mgmt did some extra optimization for us! In this case, mgmt knows that multiple packages can be installed in a single step, so it grouped both tmux and cowsay together in a single step. **mgmt calls this "autogrouping"**
+This installed our packages, and mgmt did some extra optimization for us! In this case, mgmt knows that multiple packages can be installed in a single step, so it grouped both tmux and cowsay together. **mgmt calls this "autogrouping"**
 
 You can test mgmt's reflexes by removing the `cowsay` package and watching mgmt respond by reinstalling it.
 
@@ -175,11 +176,14 @@ This example has one last important thing to share! You may configure many packa
 pkg ["tmux", "cowsay"] {
   state => "installed",
 }
+```
 
 Types of values like strings and lists will be covered in a later section.
 
 
 ### Services
+
+To finish introducing resources, here is an example that instructs mgmt to ensure the sshd service is running and also enabled on boot.
 
 ```puppet { .m-2 }
 svc "sshd" {
@@ -188,43 +192,108 @@ svc "sshd" {
 }
 ```
 
-Running this (as root), we can see mgmt again acting swiftly:
+Running this (as root), we can see mgmt again acting swiftly as it notices that sshd was not enabled at boot nor was it running:
 
-```text { .m-2 linenos=inline }
+```text { .m-2 }
 $ sudo mgmt run lang first-service.mcl
 19:08:50 engine: svc[sshd]: service enabled
 19:08:50 engine: svc[sshd]: service started
 ```
 
-## Resource Relationships
+# Resource Relationships
 
 We've seen that resources described in _mcl_ will instruct mgmt on what to observe and what the desired state is for each resource. Your desired state may include hundreds or thousands of resources.
 
-When configurating a system, you'll often need steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the config file ever changes, you want to notify the service of that change, right? We can't manage a service that doesn't exist yet because the package hasn't been installed.
+When configurating a system, you'll often need steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the service configuration changes, you want to notify the service of that change, right?
 
 🌶️ Special sauce: In mgmt, **all resources are executed in concurrently**. This allows mgmt to resolve as much as possible in the shortest amount of time. There is no order unless you describe order.
 
-If you need order, you can impose order on resources by defining relationships between resources.
+If you need order, you can impose order on resources by defining relationships between resources. 
 
-- Relationships are how mgmt knows about ordering and signaling.
-    - Ordering: What resources need to be executed(?) before another?
-    - Signalling: When one resource changes, should a linked resource take any specific action? (Internally this is called ‘Refresh’)
-    - (out of scope for this chapter) Sending values: When a resource changes, it can produce data that is useful when sent to another resource.
-    - Question: How to describe send/recv?
-- Question: Resources can produce events (signals and values?) How does a user learn what resoures support notification? (’print’ does not Notify, for example!)
-- Defining relationships:
-    - Syntax: Kind[name] → Kind2[name2]
-        - The arrow → tells mgmt that the left side should be resolved before the right side.
-    - Syntax for params:
-        - signalling relationships: Notify, Listen
-        - order relationship: Depend, Before
-- Question: how to know what Notify does to a resource? (Is this documented?)
+Relationships can be expressed two different ways in mcl, and both ways are equivalent. Use whichever is most convenient for you.
 
-Visualizing these relationships, we can start to see a structure take shape. This structure is called a graph, and it is how mgmt represents and executes your infrasturcture.
+For the examples below, we will consider two resources and their relationship: An sshd package and sshd service.
 
-examples…
+## Relationships using arrow `->` operator
 
-> ⚠️ send+recv is out of scope for this early in the document, might be best reserved for advanced?
+Note, these examples use Fedora Linux. Other linux distros may use different names for their equivalent package and services.
+
+```puppet { .m-2 }
+pkg "openssh-server" {
+  state => "installed",
+}
+
+svc "sshd" {
+  startup => "enabled",
+  state => "running",
+}
+
+# Tell mgmt that the package needs to execute
+# before the service
+Pkg["openssh-server"] -> Svc["sshd"]
+```
+
+The syntax for arrow (`->`) relationships is: `Kind["name"] -> Kind2["name2"]`.
+
+The _kind_ is a capitalized version of the resource name, and the string inside the `[brackets]` is the resource's name. 
+
+## Params: Depend and Before
+
+If it is more convenient, you may also express a relationship inside a resource definition using the params `Before` or `Depend` (capitalization is important). To express "openssh-server package must be executed before its service" we can use either of these:
+
+```puppet { .m-2 }
+pkg "openssh-server" {
+  state => "installed",
+  Before => Svc["sshd"],
+}
+```
+
+Alternately:
+
+```puppet { .m-2 }
+svc "sshd" {
+  startup => "enabled",
+  state => "running",
+  Depend => Pkg["openssh-server"],
+}
+```
+
+Each relationship requires only one definition. That is, you can use an arrow, or one _Before_, or one _Depend_.
+
+## Relationship Rejections
+
+All relationships have a single direction, as in "A before B" or "B after A". 
+
+mgmt will not allow loops in relationships, such as (A before B, B before C, C before A). A relationship loop is called a "cycle" and mgmt will report an error. Here's a small example:
+
+```puppet { .m-2 }
+file "/tmp/hello.txt" { }
+file "/tmp/world.txt" { }
+File["/tmp/hello.txt"] -> File["/tmp/world.txt"]
+File["/tmp/world.txt"] -> File["/tmp/hello.txt"]
+```
+
+Running this, mgmt will show an error:
+
+```text { .m-2 }
+16:53:02 gapi exited with error: not a dag
+resource graph has cycles
+```
+
+## not a dag? cycles?
+
+If we visualize these resources and relationships, we can start to see a structure take shape. This structure is called a graph, and it is how mgmt represents and executes your infrastructure.
+
+> XXX: Put a small diagram here?
+
+A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a math and computer science term that describes a graph (a data structure with vertexes and edges) with a requirement that edges have a direction and that a edges are not allowed to form a path through the graph that allows a loop, or cycle. 
+
+Here's how those graph concepts map to what we've learned in mgmt:
+
+* Vertex: A resource
+* Edge: A relationship between two resources
+* Direction: The arrow `->` operator and Before/Depend params
+
 
 ## Reusable Parts + Composition
 
@@ -238,19 +307,6 @@ Examples:
 
 - Class: Reuse
 - Module: maybe msyql? Module installs mysql, provides a mysql:user class?
-
-## Behavior Changes - Metaparameters
-
-<aside>
-⚠️
-
-Out of scope? Maybe limit it to just the sometimes-useful ones, like retry and delay?
-
-Hidden? Export?
-
-[Metaparameters](https://github.com/purpleidea/mgmt/blob/ba92a9212f3a1b5d4726c824191e3031d3265aab/engine/metaparams.go#L72)
-
-</aside>
 
 ## Programming:
 
@@ -279,6 +335,16 @@ The mgmt language (mcl) enables dynamic decisions that change the desired state.
 
 
 ----
+
+# Out of Scope
+
+These are all beyond "day one" success education, so I have excluded them:
+
+* send/recv
+* notification: Notify/Listen
+* Meta parameters
+* export/collect
+* modules
 
 # outline
 
