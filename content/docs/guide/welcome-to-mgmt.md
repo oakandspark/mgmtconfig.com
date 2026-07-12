@@ -1,34 +1,22 @@
-# Welcome to mgmt!
+# Preface (for editors)
 
-Objectives: Introduce new folks to mgmt - its purpose, etc.
 
 > 📚 Design of this document:
 >
 > - A gradual introduction with each section building on the previous.
-> - Examples at the end of each section demonstrating what was just covered.
+> - Real examples demonstrating what was just covered.
 > - Avoiding jargon, especially internal implementation details, such as “DAG”, unless absolutely necessary. As an example, [Elm](https://guide.elm-lang.org) does a fantastic job of explaining how to use a functional programming language *without* burdening the reader in high-level mathematical terms that are unavoidable in language docs like Haskell. It’s OK to refer to these technical terms, “in mgmt, this is called x”
 
-> ⚠️ XXX: Review for consistent use of terminology:
+> ⚠️ EDITING TODO: Review for consistent use of terminology:
 > - Verbs:  a resource *executes*, right?
 > - Terminology overload: Notify in mcl, Refresh internal to mgmt, and in this document, Signalling. I also use ‘signalling’ to include send/recv.
+> - Should we use tabs for indenting code here? If so, we should also add css to set tab-size.
 
 # Welcome to mgmt config
 
-- Scope and overview
-    - You describe your desired configuration of a system, and mgmt makes it real. Mgmt config is an infrastructure as code tool
-    - Function/purpose: configuration management, real-time response, one machine or clusters.
-    - How to install [link to getting started download docs]
-    -
-- Features of mgmt config
-    - fast: mgmt will perform multiple tasks simultaneously, ensuring that your systems reach their desired state more quickly. (ordering, relationships)
-    - batching: mgmt will group similar operations together in order to improve performance. mgmt calls this “auto grouping"
-    - reactive: it observes your system in real-time and responds to correct for any deviations (chapter: functions and resources)
+This document will guide you through your first steps learning how to use mgmt while exploring its behavior and programming syntax with real examples and real use cases.
 
-# Programming mgmt with mcl
-
-mcl is the language we use to program our desired state. mcl is strongly-typed, functional language <etc etc…>
-
-This guide will teach you how to use mcl in mgmt and how mgmt behaves.
+mcl is a strongly-typed, functional language that we use to program in mgmt.
 
 ## Resources
 
@@ -204,21 +192,19 @@ $ sudo mgmt run lang first-service.mcl
 
 We've seen that resources described in _mcl_ will instruct mgmt on what to observe and what the desired state is for each resource. Your desired state may include hundreds or thousands of resources.
 
-When configurating a system, you'll often need steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the service configuration changes, you want to notify the service of that change, right?
+When configurating a system, you may need certain steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the service configuration changes, you want to notify the service of that change, right?
 
 🌶️ Special sauce: In mgmt, **all resources are executed in concurrently**. This allows mgmt to resolve as much as possible in the shortest amount of time. There is no order unless you describe order.
 
-If you need order, you can impose order on resources by defining relationships between resources. 
+You can impose order on resources by defining relationships. Relationships can be expressed two different ways in mcl, and both ways are equivalent. Use whichever is most convenient for you.
 
-Relationships can be expressed two different ways in mcl, and both ways are equivalent. Use whichever is most convenient for you.
-
-For the examples below, we will consider two resources and their relationship: An sshd package and sshd service. We can imagine them visually:
+For the examples below, we will consider two resources and their relationship: An sshd package and sshd service. There's no service to start until the package is installed, so we need to establish an order. We can imagine them visually:
 
 ![A diagram showing two boxes with an arrow between them. Each box represents one resource](relationship-pkg-svc.svg)
 
 ## Relationships using arrow `->` operator
 
-Note, these examples use Fedora Linux. Other linux distros may use different names for their equivalent package and services.
+Note: these examples use Fedora Linux. Other linux distros may use different names for their equivalent package and services.
 
 ```puppet { .m-2 }
 pkg "openssh-server" {
@@ -235,11 +221,13 @@ svc "sshd" {
 Pkg["openssh-server"] -> Svc["sshd"]
 ```
 
-The syntax for arrow (`->`) relationships is: `Kind["name"] -> Kind2["name2"]`.
+The syntax for arrow (`->`) relationships is: 
+
+`Kind["name"] -> Kind2["name2"]`
 
 The _kind_ is a capitalized version of the resource name, and the string inside the `[brackets]` is the resource's name. 
 
-## Params: Depend and Before
+## Relationship Params: Depend and Before
 
 If it is more convenient, you may also express a relationship inside a resource definition using the params `Before` or `Depend` (capitalization is important). To express "openssh-server package must be executed before its service" we can use either of these:
 
@@ -262,7 +250,7 @@ svc "sshd" {
 
 Each relationship requires only one definition. That is, you can use an arrow, or one _Before_, or one _Depend_, for a single relationship.
 
-## Relationship Rejections
+## Relationship Rejected: Cycles
 
 All relationships have a direction, as in "A before B" or "B after A". 
 
@@ -314,7 +302,7 @@ To solve our problem, we will import and use a built-in function, [`os.release`]
 import "os"
 
 # Store the os release information in the $release variable
-# This information is a 'struct' that has an "id" field
+# This information is a 'struct' type that has an "id" field
 # The "id" field is a string containing an OS identifier
 $release = os.release()
 
@@ -326,7 +314,7 @@ if $release->id == "fedora" {
   }
 } 
 
-# Handle both Debian and Ubuntu the same way:
+# We can handle both Debian and Ubuntu together
 if $release->id == "debian" or $release->id == "ubuntu" {
   # Debian calls this service "ssh"
   svc "ssh" {
@@ -340,50 +328,102 @@ Our _mcl_ above will produce a different resource graph depending on what machin
 
 ### Variables
 
-We used the variable, `$release`, to store the result of `os.release()` function. Variables are a way to store and reuse values, and can be used in a variety of places in your _mcl_:
+We used the variable, `$release`, to store the result of `os.release()` function. Variables *immutable* meaning they may only be assigned once, and they are *block scoped*. Here are some examples that use variables:
 
 * Assignment: `$name = "James"`
-* As a resource name: `user $name { ... }`
-* As a resource param: `file "/var/cache/james" { owner => $name, }`
-* Inside a string: `"Hello, ${name}"`
+* In a resource name: `user $name { ... }`
+* In a resource param: 
+  ```puppet { .m-2 }
+  file "/var/cache/james" {
+      owner => $name,
+  }
+  ```
+* In a string: `"Hello, ${name}"`
+* In a format function: `fmt.printf("Hello, %s", $name)`
 
-TBD:
-* Variable scope
-* Briefly, types: string, number, struct, map
+#### Formatting Text with Variables
 
-- Variables
-    - Variable scope TBD
-    - Types:
-        - Brief, for now: string, number
-        - mgmt enforces strict types; you can’t give a number to something expecting a string. Doing so will show an error: <Give example>
+_mcl_ is a strongly-typed language and all values have a type, so you may find that if you assign a number to a variable, it can't be used where mgmt expects a string. In these cases, you'll want to use the `fmt.printf` function to format the number in a string:
 
-- Functions
-    - Example: Formatting strings
-    - Compute values, or observe a thing (like readfile)
-        - Question: Can I claim that functions have no side effects?
-    - Values: Can be a stream, such as the function that reads a file’s contents, and the value changes when the file content changes.
-        - Question: how to know if a function streams or is single value?
+```puppet { .m-2 }
+import "fmt"
+$port = 8000
 
-## Reusable and Composable Parts
+file "/etc/nginx/nginx.conf" {
+  state => "exists",
+  content => fmt.printf("server {\n  listen %d;\n}", $port),
+}
+```
 
-*This section shall introduce: variables and string interpolation.*
+#### Scope of Variables
 
-Class + include. Reusable blocks of resources. Takes parameters (if desired).
+Variables are block scoped, meaning they are not accessible outside of the block where they are assigned. mgmt will write an error message if you if a variable doesn't exist.
 
-Syntax: `class <name> { ... }`
+```puppet { .m-2 }
+$release = os.release()
+if $release->id == "fedora" {
+    $ssh_service = "sshd"
+if $release->id == "debian" {
+    $ssh_service = "ssh"
+}
 
-Examples:
+# An error: '$ssh_service' variable does not exist in this scope
+svc $ssh_service {
+    startup => "enabled",
+    state => "running",
+}
+```
 
-- Class: Reuse
-- Module: out of scope for this document
+mgmt will report that the variable doesn't exist:
+
+### Functions
+
+Functions are a way to perform computation and also a way observe parts of your system without making changes. Like resources, function values may change in real-time.
+
+> ⁉️Questions for the editor 
+> 
+> Question: Do all functions have a 'streaming' aspect where their values can change over time? If not, how would a user know? Should they not care?
+
+Just like *resources*, **function** results can change, in real time, reflecting observations of your machine.
+
+The simplest example is time: mgmt's _datetime_ functions observe the clock and report the time. Ever marching forward, time functions will produce new values as the clock changes. Let's try a small example using the _print_ resource to have mgmt log a message with the current time:
 
 
-----
+```puppet { .m-2 }
+import "fmt"
+import "datetime"
 
-# Out of Scope
+$now = datetime.now()
 
-These are all beyond "day one" success education, so I have excluded them:
+print "time check" {
+  msg => fmt.printf("The current time is %s", datetime.format($now, "2006-01-02 15:04:05")),
+}
+```
 
+This is the first example where mgmt truly begins to shine! 
+
+The variable `$now` stores the result of the `datetime.now()` function, and that function's result changes periodically. A new function result causes a chain reaction: A new `datetime.now()` result transitively changes the `msg` setting for our _print_ resource!
+
+* `$now`'s value is updated when datetime.now() updates (every second, in our example)
+* causing `datetime.format()` result to be re-evaluated with the new `$now` value
+* causing `fmt.printf` to be re-evaluated
+* causing our *Print\["time check"\]* resource have its `msg` param re-evaluated.
+* when the `msg` param changes, mgmt prints a new message from this resource.
+
+Try this example yourself using a _file_ resource instead of a _print_ resource!
+
+```puppet { .m-2 }
+file "/tmp/clock.txt" {
+  msg => fmt.printf("The current time is %s\n", datetime.format($now, "2006-01-02 15:04:05")),
+}
+```
+
+# Further Reading
+
+The following are all beyond "day one" success education, so I have excluded them. This section should be structured as "Further reading" for each of these concepts:
+
+* the type system
+* classes
 * send/recv
 * notification: Notify/Listen
 * Meta parameters
@@ -391,36 +431,3 @@ These are all beyond "day one" success education, so I have excluded them:
 * modules, import
 * deploy
 * etcd
-
-
-# outline
-
-- what is mgmt
-    - Scope and overview
-        - mgmt config is an infrastructure as code tool
-        - How to install [link to getting started download docs]
-        - Function/purpose: configuration management, real-time response, one machine or clusters.
-    - Features of mgmt config
-        - fast: mgmt will perform multiple tasks simultaneously, ensuring that your systems reach their desired state more quickly. (ordering, relationships)
-        - batching: mgmt will group similar operations together in order to improve performance. mgmt calls this “auto grouping”
-        - reactive: it keeps observing your infrastructure in real-time corrects for any deviations (chapters: resources, functions)
-- `mcl`, the mgmt language
-    - Basic syntax for resources
-    - Reusable parts: classes (no parameters)
-    - Making decisions
-        - Functions
-            - import, function syntax, where to find list of functions.
-            - Functions observe their inputs and update outputs when changes are observed
-            - Functions are also watched (streams)
-                - Examples, os.readfilewait ? others?
-        - Variables (after functions because I want to show fmt.printf and templating)
-            - Setting, using, string interpolation, templating, fmt.printf
-            - Types?
-        - Conditionals/branching (requires functions and/or variables)
-        - Iteration/loops
-        - Parameterized classes (requires variables)
-        - Passing data around
-    - Language Features
-        - Writing your own functions
-        - The type system?
-
