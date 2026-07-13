@@ -39,6 +39,8 @@ You describe the desired state in each resource, and mgmt makes it real by obser
 
 Keyword: When all resources reach the desired state, **mgmt calls this outcome "converged".**
 
+### Running with mgmt
+
 Our _mcl_ code can be executed in mgmt: `mgmt run lang <path>`. Mgmt will normally write its logs to stdout, so the execution of our file resource will appear like this:
 
 ```text { .m-2 }
@@ -61,7 +63,9 @@ $ cat /tmp/hello.txt
 Greetings from mgmt!
 ```
 
-In the example above, mgmt continues running even after converging. This is because mgmt continuously watches for changes (divergence) and will respond immediately and as needed.
+### Continuous Convergence
+
+In the example above, mgmt stayed running even after converging. This is because mgmt continuously watches for changes (divergence) and will respond immediately and as needed.
 
 Let's explore that! While mgmt is still running, we can modify the file in another terminal and observe mgmt's immediate responses:
 
@@ -82,6 +86,8 @@ $ echo "mgmt is fast" > /tmp/hello.txt
 You can terminate mgmt in your terminal by pressing ctrl+c.
 
 Each time we removed or modified the file, mgmt notices that the file has diverged from its desired state, and it takes action immediately to resolve it.
+
+## Resource Definitions
 
 Resource definition syntax in mcl looks like this:
 
@@ -129,7 +135,7 @@ Like files, you will also likely be managing packages and services with mgmt. He
 
 ## Packages
 
-This example showcases introduces two mgmt features: autogrouping and lists.
+Let's dive into the _pkg_ resource for managing system packages. This example also introduces two mgmt features: autogrouping and lists.
 
 ```puppet { .m-2 }
 # Ensure two different packages are installed
@@ -169,7 +175,7 @@ pkg ["tmux", "cowsay"] {
 Types of values like strings and lists will be covered in a later section.
 
 
-### Services
+## Services
 
 To finish introducing resources, here is an example that instructs mgmt to ensure the sshd service is running and also enabled on boot.
 
@@ -284,9 +290,9 @@ The visuals above show small examples of a structure called a graph, and it is h
 
 A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a math and computer science term that describes a graph where all edges have a direction and are not allowed to form a path through the graph that allows a loop, or cycle. 
 
-## Programming:
+# Programming in mgmt
 
-This section introduces built-in functions, variables, and conditionals and uses them to address differences between Linux distributions.
+This section introduces built-in functions, variables, and conditionals. We will use those features to program mgmt to handle differences between Linux distributions.
 
 So far, we’ve been describing a single desired state - in essence, the resource graph has been static, or unchanging, throughout mgmt's life and remains the same no matter where it runs. Let's do more!
 
@@ -343,7 +349,7 @@ We used the variable, `$release`, to store the result of `os.release()` function
 
 #### Formatting Text with Variables
 
-_mcl_ is a strongly-typed language and all values have a type, so you may find that if you assign a number to a variable, it can't be used where mgmt expects a string. In these cases, you'll want to use the `fmt.printf` function to format the number in a string:
+_mcl_ is a strongly-typed language. All values have a type, and parameters are typed. You may find that if you assign a number to a variable, it can't be used where mgmt expects a string. In these cases, you'll want to use the `fmt.printf` function to format the number in a string:
 
 ```puppet { .m-2 }
 import "fmt"
@@ -355,9 +361,17 @@ file "/etc/nginx/nginx.conf" {
 }
 ```
 
+We needed `fmt.printf()` here because `$port` is a number and cannot be used _as_ a string. For example, if we set the content and try to use `${port}` in inside the content string, we'll get a type error - the following uses will cause mgmt to show an error - `content => "server {\n listen ${port};\n}"`
+
+```text
+17:44:59 error: cli parse error: could not unify types: type error: str != int
+```
+
+Only string values are allowed in `"${variable}"` string interpolation, and `$port`, above, is a number. Most params, such as resource params, function params, etc, accept only a specific type. The documentation for each resource and function will tell you what types are required for each param.
+
 #### Scope of Variables
 
-Variables are block scoped, meaning they are not accessible outside of the block where they are assigned. mgmt will write an error message if you if a variable doesn't exist.
+Variables are block scoped, meaning they are not accessible outside of the block where they are assigned. A block is the stuff between `{` and `}`. mgmt will write an error message if a variable doesn't exist.
 
 ```puppet { .m-2 }
 $release = os.release()
@@ -367,7 +381,8 @@ if $release->id == "debian" {
     $ssh_service = "ssh"
 }
 
-# An error: '$ssh_service' variable does not exist in this scope
+# This will be an error: 
+# '$ssh_service' variable does not exist in this scope
 svc $ssh_service {
     startup => "enabled",
     state => "running",
@@ -375,6 +390,13 @@ svc $ssh_service {
 ```
 
 mgmt will report that the variable doesn't exist:
+
+```text
+17:54:57 cli: lang: ast: var `$ssh_service` does not exist in this scope: variable-scope-error.mcl @ 11:5-11:17
+
+svc $ssh_service {
+    ^^^^^^^^^^^^
+```
 
 ### Functions
 
