@@ -1,5 +1,17 @@
-# Preface (for editors)
 
+# Welcome to mgmt config
+
+This document will guide you through your first steps learning how to use mgmt while exploring its behavior and programming syntax with real examples and real use cases.
+
+mcl is a strongly-typed, functional language that we use to program in mgmt.
+
+This guide is designed to teach you the syntax and concepts necessary to find successful using mgmt on your first day.
+
+# Table of Contents 
+
+{{< toc >}}
+
+# Preface (for editors)
 
 > 📚 Design of this document:
 >
@@ -12,13 +24,8 @@
 > - Terminology overload: Notify in mcl, Refresh internal to mgmt, and in this document, Signalling. I also use ‘signalling’ to include send/recv.
 > - Should we use tabs for indenting code here? If so, we should also add css to set tab-size.
 
-# Welcome to mgmt config
 
-This document will guide you through your first steps learning how to use mgmt while exploring its behavior and programming syntax with real examples and real use cases.
-
-mcl is a strongly-typed, functional language that we use to program in mgmt.
-
-## Resources
+## Resource Basics
 
 Configuration is described with an element called a **resource**.
 Most kinds of resources in mgmt will be familiar to you and are intended to align with your mental model of your infrastructure: ensuring that a package is installed, a service is disabled, or a user exists.
@@ -39,7 +46,7 @@ You describe the desired state in each resource, and mgmt makes it real by obser
 
 Keyword: When all resources reach the desired state, **mgmt calls this outcome "converged".**
 
-### Running with mgmt
+### Running mgmt
 
 Our _mcl_ code can be executed in mgmt: `mgmt run lang <path>`. Mgmt will normally write its logs to stdout, so the execution of our file resource will appear like this:
 
@@ -87,7 +94,7 @@ You can terminate mgmt in your terminal by pressing ctrl+c.
 
 Each time we removed or modified the file, mgmt notices that the file has diverged from its desired state, and it takes action immediately to resolve it.
 
-## Resource Definitions
+## Resource Syntax
 
 Resource definition syntax in mcl looks like this:
 
@@ -133,7 +140,11 @@ Can resources be remote or only local? mgmt resources do not have a concept of l
 
 Like files, you will also likely be managing packages and services with mgmt. Here's a few examples:
 
-## Packages
+## Familiar Resources
+
+mgmt supports a wide variety of resources. For your first day, we'll show you two more commonly-used resources: pkg and svc.
+
+### Packages
 
 Let's dive into the _pkg_ resource for managing system packages. This example also introduces two mgmt features: autogrouping and lists.
 
@@ -174,8 +185,7 @@ pkg ["tmux", "cowsay"] {
 
 Types of values like strings and lists will be covered in a later section.
 
-
-## Services
+### Services
 
 To finish introducing resources, here is an example that instructs mgmt to ensure the sshd service is running and also enabled on boot.
 
@@ -194,7 +204,7 @@ $ sudo mgmt run lang first-service.mcl
 19:08:50 engine: svc[sshd]: service started
 ```
 
-# Resource Relationships
+## Resource Relationships
 
 We've seen that resources described in _mcl_ will instruct mgmt on what to observe and what the desired state is for each resource. Your desired state may include hundreds or thousands of resources.
 
@@ -208,7 +218,7 @@ For the examples below, we will consider two resources and their relationship: A
 
 ![A diagram showing two boxes with an arrow between them. Each box represents one resource](relationship-pkg-svc.svg)
 
-## Relationships using arrow `->` operator
+### Relationships using arrow `->` operator
 
 Note: these examples use Fedora Linux. Other linux distros may use different names for their equivalent package and services.
 
@@ -233,7 +243,7 @@ The syntax for arrow (`->`) relationships is:
 
 The _kind_ is a capitalized version of the resource name, and the string inside the `[brackets]` is the resource's name. 
 
-## Relationship Params: Depend and Before
+### Relationship Params: Depend and Before
 
 If it is more convenient, you may also express a relationship inside a resource definition using the params `Before` or `Depend` (capitalization is important). To express "openssh-server package must be executed before its service" we can use either of these:
 
@@ -256,7 +266,7 @@ svc "sshd" {
 
 Each relationship requires only one definition. That is, you can use an arrow, or one _Before_, or one _Depend_, for a single relationship.
 
-## Relationship Rejected: Cycles
+### Relationship Rejected: Cycles
 
 All relationships have a direction, as in "A before B" or "B after A". 
 
@@ -280,7 +290,7 @@ Because both files want to be "before" each other, we have a loop with no beginn
 resource graph has cycles
 ```
 
-## not a dag? cycles?
+### not a dag? cycles?
 
 The visuals above show small examples of a structure called a graph, and it is how mgmt represents and executes your infrastructure. Graphs have vertexes and edges, and here's how those concepts map to what we've learned about mgmt, so far:
 
@@ -290,7 +300,7 @@ The visuals above show small examples of a structure called a graph, and it is h
 
 A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a math and computer science term that describes a graph where all edges have a direction and are not allowed to form a path through the graph that allows a loop, or cycle. 
 
-# Programming in mgmt
+## Programming in mgmt
 
 This section introduces built-in functions, variables, and conditionals. We will use those features to program mgmt to handle differences between Linux distributions.
 
@@ -363,7 +373,7 @@ file "/etc/nginx/nginx.conf" {
 
 We needed `fmt.printf()` here because `$port` is a number and cannot be used _as_ a string. For example, if we set the content and try to use `${port}` in inside the content string, we'll get a type error - the following uses will cause mgmt to show an error - `content => "server {\n listen ${port};\n}"`
 
-```text
+```text { .m-2 }
 17:44:59 error: cli parse error: could not unify types: type error: str != int
 ```
 
@@ -391,7 +401,7 @@ svc $ssh_service {
 
 mgmt will report that the variable doesn't exist:
 
-```text
+```text { .m-2 }
 17:54:57 cli: lang: ast: var `$ssh_service` does not exist in this scope: variable-scope-error.mcl @ 11:5-11:17
 
 svc $ssh_service {
