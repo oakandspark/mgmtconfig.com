@@ -138,15 +138,13 @@ Can resources be remote or only local? mgmt resources do not have a concept of l
 > 
 > Question: Some resources are driven by external events (file w/ inotify), but others use timers. How frequently is a resource checked? How would the reader learn that? Should the reader not worry about it?
 
-Like files, you will also likely be managing packages and services with mgmt. Here's a few examples:
-
 ## Familiar Resources
 
 mgmt supports a wide variety of resources. For your first day, we'll show you two more commonly-used resources: pkg and svc.
 
 ### Packages
 
-Let's dive into the _pkg_ resource for managing system packages. This example also introduces two mgmt features: autogrouping and lists.
+Let's dive into the _pkg_ resource for managing system packages. This example also introduces two mgmt features: a behavior called "autogrouping", and an mcl syntax for lists.
 
 ```puppet { .m-2 }
 # Ensure two different packages are installed
@@ -159,7 +157,7 @@ pkg "cowsay" {
 }
 ```
 
-Package management requires root, so we can invoke mgmt with sudo to run this example, after writing the above into a file "first-package.mcl":
+Package management may require root, so we can invoke mgmt with sudo to run this example, after writing the above into a file "first-package.mcl":
 
 ```text { .m-2 linenos=inline }
 $ sudo mgmt run lang first-package.mcl
