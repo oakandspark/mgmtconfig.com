@@ -46,7 +46,7 @@ theme = "hugo-serif-theme"
 	grey = "#605e5e"
 
 [markup.highlight]
-  style = "catppuccin-latte"
+	style = "catppuccin-latte"
 
 [params.logo]
 	mobile = "images/logo_default_symbol.svg"	# TODO: do we need to optimize here?
