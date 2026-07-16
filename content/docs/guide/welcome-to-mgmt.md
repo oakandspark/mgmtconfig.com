@@ -19,9 +19,9 @@ It’s OK to refer to these technical terms, “in mgmt, this is called x” aft
 
 This document will guide you through your first steps learning to use mgmt while exploring its behavior and programming syntax with real examples.
 
-mcl is a strongly-typed, reactive, functional language that we use to program in mgmt.
-
 This guide is designed to teach you the syntax and concepts necessary to find success using mgmt on your first day.
+
+We recommend that you [install mgmt](../getting-started/) and run the examples as you read this guide. For best results, run these examples on a fresh install of Fedora as that is the environment targeted by the examples below.
 
 # Table of Contents 
 
@@ -33,21 +33,23 @@ This guide is designed to teach you the syntax and concepts necessary to find su
 Configuration is described with an element called a **resource**.
 Most kinds of resources in mgmt will be familiar to you and are intended to align with your mental model of your infrastructure: ensuring that a package is installed, a service is disabled, or a user exists.
 
-Resources have three parts: a kind, a name, and parameters (mgmt calls these 'params'). The following example code shows a single file _resource_:
+Resources have three parts: a kind, a name, and parameters (mgmt calls these 'params'). The following example code shows a single file _resource_ written in mgmt's programming language, _mcl_:
 
 ```puppet { .m-2 }
 
 file "/tmp/hello.txt" {
-	content => "Greetings from mgmt!",
+	content => "Greetings from mgmt!\n",
 	state => "exists",
 }
 ```
 
-This is a file resource with a name “/tmp/hello.txt” and describes a state where you want the file to exist and contain exactly `Greetings from mgmt!`
+This is a file resource with a name “/tmp/hello.txt” and describes a state where you want the file to exist and contain exactly: 
 
-You describe the desired state in each resource, and mgmt makes it real by observing the current state and making any necessary changes. An _mcl_ program can describe as many resources as you need.
+```text {.m-2}
+Greetings from mgmt!
+```
 
-Keyword: When all resources reach the desired state, **mgmt calls this outcome "converged".**
+With this programming model, you express the desired state for each resource, and mgmt makes it real by observing the current state and making any necessary changes. The language, _mcl_, is a strongly-typed, reactive, functional language, and if those terms are unfamiliar to you, do not worry! Each of those terms (reactive, etc) will be discussed further in this guide.
 
 ### Running mgmt
 
@@ -66,6 +68,8 @@ When you run this, notice the following:
 * mgmt can run as any user, but that user will correct permissions in order to execute some resources.
 * The first part '10:28:48' is a timestamp, and your timestamps will be different.
 
+When all resources are in the desired state, **mgmt calls this outcome "converged".**
+
 Let's verify that our file was created correctly, and run the following in another terminal:
 
 ```text { .m-2 }
@@ -75,7 +79,7 @@ Greetings from mgmt!
 
 ### Continuous Convergence
 
-In the example above, mgmt stayed running even after converging. This is because mgmt continuously watches for changes (divergence) and will respond immediately and as needed.
+In the example above, mgmt stayed running even after converging. This is because mgmt continuously watches for changes (divergence) and will **react** immediately and as needed.
 
 Let's explore that! While mgmt is still running, we can modify the file in another terminal and observe mgmt's immediate responses:
 
@@ -95,20 +99,28 @@ $ echo "mgmt is fast" > /tmp/hello.txt
 
 You can terminate mgmt in your terminal by pressing ctrl+c.
 
-Each time we removed or modified the file, mgmt notices that the file has diverged from its desired state, and it takes action immediately to resolve it.
+Each time we removed or modified the file, mgmt notices that the file has diverged from its desired state, and it reacts immediately to bring the resources to the desired state.
 
 ## Resource Syntax
 
-Resource definition syntax in mcl looks like this:
+Resource definition syntax in _mcl_ looks like this:
 
 ```puppet { .m-2 }
 # This is a comment
+
+# Define a single resource
 kind "name" {
 	# All params must end with a comma
-	param1 => value1,
+	param1 => "value1",
 	
 	# Including the final param
-	param2 => value2,
+	param2 => "value2",
+}
+
+# Define multiple resources of the same kind 
+# with the same params:
+kind ["name1", "name2", "name3"] {
+	param1 => "value1",
 }
 
 # Did you know? mgmt has some internal resources 
