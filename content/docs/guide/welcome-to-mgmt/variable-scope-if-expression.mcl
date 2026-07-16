@@ -1,0 +1,7 @@
+$ssh_service = if true {
+  ["sshd"]
+} else {
+  "ssh"
+}
+
+svc $ssh_service { }
