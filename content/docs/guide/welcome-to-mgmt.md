@@ -422,6 +422,8 @@ Only string values are allowed in `"${variable}"` string interpolation, and `$po
 Variables are block scoped, meaning they are not accessible outside of the block where they are assigned. A block is the stuff between `{` and `}`. mgmt will write an error message if a variable doesn't exist.
 
 ```puppet { .m-2 }
+import "os"
+
 $release = os.release()
 if $release->id == "fedora" {
 	$ssh_service = "sshd"
@@ -446,9 +448,10 @@ svc $ssh_service {
     ^^^^^^^^^^^^
 ```
 
-With a small change, we can correct this example. In mcl, an `if` can also be an expression, and expressions can be assigned to variables:
+With a small change, we can fix the above example. In _mcl_, an `if` can also be an expression, and expressions can be assigned to variables:
 
 ```puppet { .m-2 }
+import "os"
 $release = os.release()
 
 $ssh_service = if $release->id == "fedora" {
@@ -466,7 +469,26 @@ svc [$ssh_service] {
 
 Previously, you learned that resource definitions can accept a list of names or, for convenience, a single string literal. In our current example, we used an `if` expression to store a string in the `$ssh_service` variable, and because the _name_ parameter accepts a list of strings, we need provide a list: `[$ssh_service]`.
 
-What happens if we use the wrong type?
+Before we move on, you might wonder, what happens if we use the wrong type? Let's try that. If we forget the brackets for the resource name and use:
+
+```puppet { .m-2 }
+svc $ssh_service {
+```
+
+mgmt will report the following:
+
+```text {.m-2}
+18:40:06 cli: lang: unification: type error: str != list: variable-scope-if-expression.mcl @ 12:1-15:2
+
+svc $ssh_service {
+^ from here ...
+}
+^ ... to here
+```
+
+This is mgmt explaining that we provided a _str_ where a _list_ was required.
+
+For system operators, strongly-typed languages offer a significant benefit by moving small errors into the compilation and parsing phase instead of at runtime. Mgmt rejected our mcl because we used the wrong value type, and this happens before the mcl is executed!
 
 ### Functions
 
