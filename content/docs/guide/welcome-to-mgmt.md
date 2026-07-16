@@ -362,7 +362,6 @@ We used the variable, `$release`, to store the result of `os.release()` function
 
 
 ```puppet { .m-2 }
-
 $ssh_service = "ssh"
 svc [$ssh_service] { ... }
 
@@ -372,7 +371,7 @@ svc $ssh_service { ... }
 ```
 
 
-mcl is a strongly-typed language, but there's a small exception added for convenience. A resource's _name_ is handled as a list of strings, but a special case of a single string literal is allowed. An explanation of this follows further down in this document.
+mcl is a strongly-typed language, but there's a small exception added for convenience. A resource's _name_ is a list of strings, but a special case of a single string literal is allowed. An explanation of this follows further down in this document.
 
 #### Formatting Text with Variables
 
@@ -449,7 +448,7 @@ What happens if we use the wrong type?
 
 ### Functions
 
-Functions are a way to perform computation and also a way observe parts of your system without making changes. If you've done programming in other languages, mgmt functions may surprise you! Here, functions produce a result, but may produce additional results in the future. Think of them more like a stream of data rather than a one-time computation.
+Functions are a way to perform computation and also a way observe parts of your system without making changes. If you've done programming in other languages, mgmt functions may surprise you! In mgmt, functions may produce many results over time. Think of them more like a stream of data rather than a one-time computation.
 
 The simplest example is time: mgmt's _datetime_ functions observe the clock and report the time. Ever marching forward, time functions will produce new values as the clock changes. Let's try a small example using the _print_ resource to have mgmt log a message with the current time:
 
@@ -486,6 +485,117 @@ file "/tmp/clock.txt" {
 ## A Complete Demonstration
 
 While the previous example does demonstrate how information flows through mgmt's graph, it isn't exactly a realistic use case - it is unlikely that you will need a function changing a resource every second, so let's use a more practical and useful example that demonstrates mgmt's functional reactive programming to apply a desired state.
+
+### The Story
+
+The story: You are a kind and collaborative systems operator who would like to users to be able to choose their own shell without needing to file a ticket or ask for help. To solve this, you would like a user to be able to set their own shell and also  ensure that shell is actually available. After talking to your users, you learn that the users who want a different shell also maintain their own shell configuration files.
+
+The idea: What if a machine automatically configures a user's shell based on the presence of a shell's config file? It would be nice if this change gets executed immediately upon a user creating their shell config file.
+
+In mgmt, we can do this, and this guide has prepared us for this challenge! What tools do we need?
+
+We need to:
+* Observe: detect a file's presence in a user's home directory
+* Change: configure the user's login shell on the machine
+* Change: install the shell package if needed.
+
+Recall that an mgmt resource can apply changes and that functions only observe or compute and cannot make changes. This means we'll want a resource for user and package parts, and a function for the file observation part.
+
+### The Implementation
+
+We can implement our solution completely in mcl and run it with mgmt:
+
+```puppet { .m-2 }
+# Make the os.file_exists() function available
+import "os"
+
+$home = "/home"
+$user = "dev"
+
+# If this user creates a ~/.zshrc, then
+# go ahead and set their shell to zsh
+$shell = if os.file_exists("${home}/${user}/.zshrc") {
+	"zsh"
+} else {
+	"bash"
+}
+
+user [$user] {
+	state => "exists",
+	homedir => "${home}/${user}/",
+	
+	# The user's shell now depends on the value of $shell
+	# which depends on the presence of a .zshrc file
+	shell => "/bin/${shell}",
+}
+
+# Ensure the user's shell is installed
+# This assumes the shell executable is the same as the package name.
+pkg [$shell] {
+	state => "installed",
+	
+	# Ensure the package is applied 
+	# before we try to modify the user's shell.
+	Before => User[$user],
+}
+```
+
+This example demonstrates some of the very powerful capabilities of mgmt:
+
+First, your desired state is a dynamic and computed, not static! The actual resource graph will be different depending on the presence of that `.zshrc` file. More specifically, the user's shell and a package install depends on the value of `$shell` which itself is based on the presence (or not) of a `.zshrc` file in the user's home directory.
+
+Second, because mgmt is a reactive programming system, the `os.file_exists()` function watches for changes and produces a new value when the file is created or deleted. This new value causes mgmt to recompute the desired state!
+
+### The Result
+
+Here's what happens when we run this:
+
+#### First, nothing to change
+
+At first, this user's home directory is empty and the shell is bash, so mgmt computes our desired state, observes that the current state matches our desired state -- the user's shell should be bash -- and doesn't need to make any changes.
+
+
+#### Second, create a .zshrc
+
+If we create a .zshrc file with `touch .zshrc`, mgmt springs into action! Our `os.file_exists()` function produces a new value, and mgmt knows to compute a new graph to to apply the new desired state:
+
+```text { .m-2 }
+16:16:40 gapi: generating new graph...
+
+... < logs cropped for brevity > ...
+
+16:16:40 engine: pkg[zsh]: Check: pkg[zsh]
+16:16:40 engine: pkg[zsh]: Apply: pkg[zsh]
+16:16:40 engine: pkg[zsh]: Set(installed): pkg[zsh]...
+16:16:47 engine: pkg[zsh]: Set(installed) success: pkg[zsh]
+16:16:47 engine: pkg[zsh]: Check: pkg[zsh]
+16:16:47 engine: user[dev]: modifying user: dev
+```
+
+And the user's shell has been updated to be zsh:
+
+```bash-session { .m-2 }
+$ getent passwd dev  | awk -F: '{print $NF}'
+/bin/zsh
+```
+
+#### Third, remove the .zshrc
+
+If the user deletes their .zshrc with `rm ~/.zshrc`, mgmt should set the shell back to bash:
+
+```text { .m-2 }
+16:40:42 gapi: generating new graph...
+... 
+16:40:44 engine: pkg[bash]: Check: pkg[bash]
+16:40:44 engine: user[dev]: modifying user: dev
+```
+
+And we can check that bash is now the user's shell:
+
+```text {.m-2}
+$ getent passwd dev  | awk -F: '{print $NF}'
+/bin/bash
+```
 
 ## Further Reading
 
