@@ -13,6 +13,10 @@ As an example, [Elm](https://guide.elm-lang.org) does a fantastic job of explain
 
 It’s OK to refer to these technical terms, “in mgmt, this is called x” after the behavior or concepts have been explained.
 
+Example mcl code should be indented with tabs. To check this, you can try this command to print lines that might need to use tabs for indentation:
+
+  awk '/^\s*```puppet/ { mcl=1; next } /^\s*```\s*$/ { mcl=0 } mcl == 1 && /^[ ]+[A-Za-z0-9#]/ { print NR, $0 }' welcome-to-mgmt.md
+
 -->
 
 # Welcome to mgmt config
@@ -136,9 +140,9 @@ The example above can also be written with a different name and setting the path
 
 ```puppet { .m-2 }
 file "a greeting" {
-  content => "Greetings from mgmt!",
-  path => "/tmp/hello.txt",
-  state => "exists",
+	content => "Greetings from mgmt!",
+	path => "/tmp/hello.txt",
+	state => "exists",
 }
 ```
 
@@ -164,11 +168,11 @@ Let's dive into the _pkg_ resource for managing system packages. This example al
 ```puppet { .m-2 }
 # Ensure two different packages are installed
 pkg "tmux" {
-  state => "installed",
+	state => "installed",
 }
 
 pkg "cowsay" {
-  state => "installed",
+	state => "installed",
 }
 ```
 
@@ -192,7 +196,7 @@ This example has one last important thing to share! You may configure many packa
 
 ```puppet { .m-2 }
 pkg ["tmux", "cowsay"] {
-  state => "installed",
+	state => "installed",
 }
 ```
 
@@ -204,8 +208,8 @@ To finish introducing resources, here is an example that instructs mgmt to ensur
 
 ```puppet { .m-2 }
 svc "sshd" {
-  startup => "enabled",
-  state => "running",
+	startup => "enabled",
+	state => "running",
 }
 ```
 
@@ -478,7 +482,7 @@ import "datetime"
 $now = datetime.now()
 
 print "time check" {
-  msg => fmt.printf("The current time is %s", datetime.format($now, "2006-01-02 15:04:05")),
+	msg => fmt.printf("The current time is %s", datetime.format($now, "2006-01-02 15:04:05")),
 }
 ```
 
