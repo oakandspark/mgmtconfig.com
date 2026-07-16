@@ -1,28 +1,31 @@
 
+<!--
+
+Greetings, documentation contributors!
+
+📚 Design of this document:
+
+- A gradual introduction with each section building on the previous.
+- Using real examples demonstrating what was just covered.
+- And avoiding jargon, such as “DAG”, until absolutely necessary. 
+
+As an example, [Elm](https://guide.elm-lang.org) does a fantastic job of explaining how to use a functional programming language *without* burdening the reader in high-level mathematical terms that are unavoidable in language docs like Haskell. 
+
+It’s OK to refer to these technical terms, “in mgmt, this is called x” after the behavior or concepts have been explained.
+
+-->
+
 # Welcome to mgmt config
 
-This document will guide you through your first steps learning how to use mgmt while exploring its behavior and programming syntax with real examples and real use cases.
+This document will guide you through your first steps learning to use mgmt while exploring its behavior and programming syntax with real examples.
 
-mcl is a strongly-typed, functional language that we use to program in mgmt.
+mcl is a strongly-typed, reactive, functional language that we use to program in mgmt.
 
-This guide is designed to teach you the syntax and concepts necessary to find successful using mgmt on your first day.
+This guide is designed to teach you the syntax and concepts necessary to find success using mgmt on your first day.
 
 # Table of Contents 
 
 {{< toc >}}
-
-# Preface (for editors)
-
-> 📚 Design of this document:
->
-> - A gradual introduction with each section building on the previous.
-> - Real examples demonstrating what was just covered.
-> - Avoiding jargon, especially internal implementation details, such as “DAG”, unless absolutely necessary. As an example, [Elm](https://guide.elm-lang.org) does a fantastic job of explaining how to use a functional programming language *without* burdening the reader in high-level mathematical terms that are unavoidable in language docs like Haskell. It’s OK to refer to these technical terms, “in mgmt, this is called x”
-
-> ⚠️ EDITING TODO: Review for consistent use of terminology:
-> - Verbs:  a resource *executes*, right?
-> - Terminology overload: Notify in mcl, Refresh internal to mgmt, and in this document, Signalling. I also use ‘signalling’ to include send/recv.
-> - Should we use tabs for indenting code here? If so, we should also add css to set tab-size.
 
 
 ## Resource Basics
@@ -35,8 +38,8 @@ Resources have three parts: a kind, a name, and parameters (mgmt calls these 'pa
 ```puppet { .m-2 }
 
 file "/tmp/hello.txt" {
-  content => "Greetings from mgmt!",
-  state => "exists",
+	content => "Greetings from mgmt!",
+	state => "exists",
 }
 ```
 
@@ -101,11 +104,11 @@ Resource definition syntax in mcl looks like this:
 ```puppet { .m-2 }
 # This is a comment
 kind "name" {
-  # All params must end with a comma
-  param1 => value1,
-
-  # Including the final param
-  param2 => value2,
+	# All params must end with a comma
+	param1 => value1,
+	
+	# Including the final param
+	param2 => value2,
 }
 
 # Did you know? mgmt has some internal resources 
@@ -113,7 +116,7 @@ kind "name" {
 http:server "127.0.0.1:8080" { }
 ```
 
-💡 _What’s in a name?_  Many resources use the name as a default value for a param. The file resource uses name as the default value for the `path` param.
+💡 _What’s in a name?_  Many resources use the name as a default value for a param. The file resource uses name as the default value for the `path` param. Check out the [resource reference](../../resources/) for details on how each resource may use the _name_.
 
 ⚠️Syntax Caution: In a resource, every param must have a trailing comma, including the last one.
 
@@ -138,9 +141,9 @@ Can resources be remote or only local? mgmt resources do not have a concept of l
 > 
 > Question: Some resources are driven by external events (file w/ inotify), but others use timers. How frequently is a resource checked? How would the reader learn that? Should the reader not worry about it?
 
-## Familiar Resources
+## More Familiar Resources
 
-mgmt supports a wide variety of resources. For your first day, we'll show you two more commonly-used resources: pkg and svc.
+mgmt supports a wide variety of resources. For your first day, we'll keep focusing on familiar and common resources, such as packages and services.
 
 ### Packages
 
@@ -206,7 +209,7 @@ $ sudo mgmt run lang first-service.mcl
 
 We've seen that resources described in _mcl_ will instruct mgmt on what to observe and what the desired state is for each resource. Your desired state may include hundreds or thousands of resources.
 
-When configurating a system, you may need certain steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the service configuration changes, you want to notify the service of that change, right?
+When configuring a system, you may need certain steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the service configuration changes, you want to notify the service of that change, right?
 
 🌶️ Special sauce: In mgmt, **all resources are executed in concurrently**. This allows mgmt to resolve as much as possible in the shortest amount of time. There is no order unless you describe order.
 
@@ -222,12 +225,12 @@ Note: these examples use Fedora Linux. Other linux distros may use different nam
 
 ```puppet { .m-2 }
 pkg "openssh-server" {
-  state => "installed",
+	state => "installed",
 }
 
 svc "sshd" {
-  startup => "enabled",
-  state => "running",
+	startup => "enabled",
+	state => "running",
 }
 
 # Tell mgmt that the package needs to execute
@@ -247,8 +250,8 @@ If it is more convenient, you may also express a relationship inside a resource 
 
 ```puppet { .m-2 }
 pkg "openssh-server" {
-  state => "installed",
-  Before => Svc["sshd"],
+	state => "installed",
+	Before => Svc["sshd"],
 }
 ```
 
@@ -256,9 +259,9 @@ Alternately:
 
 ```puppet { .m-2 }
 svc "sshd" {
-  startup => "enabled",
-  state => "running",
-  Depend => Pkg["openssh-server"],
+	startup => "enabled",
+	state => "running",
+	Depend => Pkg["openssh-server"],
 }
 ```
 
@@ -321,20 +324,20 @@ import "os"
 $release = os.release()
 
 if $release->id == "fedora" {
-  # Fedora calls this service "sshd"
-  svc "sshd" {
-    startup => "enabled",
-    state => "running",
-  }
+	# Fedora calls this service "sshd"
+	svc "sshd" {
+		startup => "enabled",
+		state => "running",
+	}
 } 
 
 # We can handle both Debian and Ubuntu together
 if $release->id == "debian" or $release->id == "ubuntu" {
-  # Debian calls this service "ssh"
-  svc "ssh" {
-    startup => "enabled",
-    state => "running",
-  }
+	# Debian calls this service "ssh"
+	svc "ssh" {
+		startup => "enabled",
+		state => "running",
+	}
 }
 ```
 
@@ -345,15 +348,31 @@ Our _mcl_ above will produce a different resource graph depending on what machin
 We used the variable, `$release`, to store the result of `os.release()` function. Variables *immutable* meaning they may only be assigned once, and they are *block scoped*. Here are some examples that use variables:
 
 * Assignment: `$name = "James"`
-* In a resource name: `user $name { ... }`
+* In a resource name: `user [$name] { ... }`
 * In a resource param: 
   ```puppet { .m-2 }
   file "/var/cache/james" {
-      owner => $name,
+  	owner => $name,
   }
   ```
 * In a string: `"Hello, ${name}"`
 * In a format function: `fmt.printf("Hello, %s", $name)`
+
+⚠️ Syntax Caution: When using a variable for a resource name, it is recommended to use list of strings, as in either of the following:
+
+
+```puppet { .m-2 }
+
+$ssh_service = "ssh"
+svc [$ssh_service] { ... }
+
+# Or this:
+$ssh_service = ["ssh"]
+svc $ssh_service { ... }
+```
+
+
+mcl is a strongly-typed language, but there's a small exception added for convenience. A resource's _name_ is handled as a list of strings, but a special case of a single string literal is allowed. An explanation of this follows further down in this document.
 
 #### Formatting Text with Variables
 
@@ -364,8 +383,8 @@ import "fmt"
 $port = 8000
 
 file "/etc/nginx/nginx.conf" {
-  state => "exists",
-  content => fmt.printf("server {\n  listen %d;\n}", $port),
+	state => "exists",
+	content => fmt.printf("server {\n  listen %d;\n}", $port),
 }
 ```
 
@@ -384,16 +403,16 @@ Variables are block scoped, meaning they are not accessible outside of the block
 ```puppet { .m-2 }
 $release = os.release()
 if $release->id == "fedora" {
-    $ssh_service = "sshd"
+	$ssh_service = "sshd"
 if $release->id == "debian" {
-    $ssh_service = "ssh"
+	$ssh_service = "ssh"
 }
 
 # This will be an error: 
 # '$ssh_service' variable does not exist in this scope
 svc $ssh_service {
-    startup => "enabled",
-    state => "running",
+	startup => "enabled",
+	state => "running",
 }
 ```
 
@@ -406,15 +425,31 @@ svc $ssh_service {
     ^^^^^^^^^^^^
 ```
 
+With a small change, we can correct this example. In mcl, an `if` can also be an expression, and expressions can be assigned to variables:
+
+```puppet { .m-2 }
+$release = os.release()
+
+$ssh_service = if $release->id == "fedora" {
+	"sshd"
+} else {
+	# assume all other distros call it "ssh"
+	"ssh"
+}
+
+svc [$ssh_service] {
+	startup => "enabled",
+	state => "running",
+}
+```
+
+Previously, you learned that resource definitions can accept a list of names or, for convenience, a single string literal. In our current example, we used an `if` expression to store a string in the `$ssh_service` variable, and because the _name_ parameter accepts a list of strings, we need provide a list: `[$ssh_service]`.
+
+What happens if we use the wrong type?
+
 ### Functions
 
-Functions are a way to perform computation and also a way observe parts of your system without making changes. Like resources, function values may change in real-time.
-
-> ⁉️Questions for the editor 
-> 
-> Question: Do all functions have a 'streaming' aspect where their values can change over time? If not, how would a user know? Should they not care?
-
-Just like *resources*, **function** results can change, in real time, reflecting observations of your machine.
+Functions are a way to perform computation and also a way observe parts of your system without making changes. If you've done programming in other languages, mgmt functions may surprise you! Here, functions produce a result, but may produce additional results in the future. Think of them more like a stream of data rather than a one-time computation.
 
 The simplest example is time: mgmt's _datetime_ functions observe the clock and report the time. Ever marching forward, time functions will produce new values as the clock changes. Let's try a small example using the _print_ resource to have mgmt log a message with the current time:
 
@@ -430,9 +465,9 @@ print "time check" {
 }
 ```
 
-This is the first example where mgmt truly begins to shine! 
+This is the first example where mgmt truly begins to shine and you can begin to see the "reactive" part of mgmt for yourself:
 
-The variable `$now` stores the result of the `datetime.now()` function, and that function's result changes periodically. A new function result causes a chain reaction: A new `datetime.now()` result transitively changes the `msg` setting for our _print_ resource!
+The variable `$now` stores the result of the `datetime.now()` function, and, periodically, this function provides new results. A new function result causes a chain reaction: A new `datetime.now()` result transitively changes the `msg` setting for our _print_ resource!
 
 * `$now`'s value is updated when datetime.now() updates (every second, in our example)
 * causing `datetime.format()` result to be re-evaluated with the new `$now` value
@@ -444,11 +479,15 @@ Try this example yourself using a _file_ resource instead of a _print_ resource!
 
 ```puppet { .m-2 }
 file "/tmp/clock.txt" {
-  msg => fmt.printf("The current time is %s\n", datetime.format($now, "2006-01-02 15:04:05")),
+	msg => fmt.printf("The current time is %s\n", datetime.format($now, "2006-01-02 15:04:05")),
 }
 ```
 
-# Further Reading
+## A Complete Demonstration
+
+While the previous example does demonstrate how information flows through mgmt's graph, it isn't exactly a realistic use case - it is unlikely that you will need a function changing a resource every second, so let's use a more practical and useful example that demonstrates mgmt's functional reactive programming to apply a desired state.
+
+## Further Reading
 
 The following are all beyond "day one" success education, so I have excluded them. This section should be structured as "Further reading" for each of these concepts:
 
