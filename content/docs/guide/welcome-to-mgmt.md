@@ -211,17 +211,17 @@ We've seen that resources described in _mcl_ will instruct mgmt on what to obser
 
 When configuring a system, you may need certain steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the service configuration changes, you want to notify the service of that change, right?
 
-🌶️ Special sauce: In mgmt, **all resources are executed in concurrently**. This allows mgmt to resolve as much as possible in the shortest amount of time. There is no order unless you describe order.
+Aside: In mgmt, **all resources are executed in concurrently**. This allows mgmt to resolve as much as possible in the shortest amount of time. There is no order unless you define order.
 
-You can impose order on resources by defining relationships. Relationships can be expressed two different ways in mcl, and both ways are equivalent. Use whichever is most convenient for you.
+You can impose order on resources by defining relationships. Relationships can be expressed two different ways, shown below, Both ways are equivalent. Use whichever is most convenient for you.
 
-For the examples below, we will consider two resources and their relationship: An sshd package and sshd service. There's no service to start until the package is installed, so we need to establish an order. We can imagine them visually:
+For the examples below, we will consider two resources and their relationship: An sshd package and sshd service. The OS-provided package for sshd includes a systemd service, which means there's no service to start until the package is installed, so we need to establish an order. We can imagine them visually:
 
-![A diagram showing two boxes with an arrow between them. Each box represents one resource](relationship-pkg-svc.svg)
+![A diagram showing two boxes with an arrow between them. Each box represents one resource. A box 'pkg openssh-server' has an arrow from it pointing to the second box 'svc sshd'](relationship-pkg-svc.svg)
 
 ### Relationships using arrow `->` operator
 
-Note: these examples use Fedora Linux. Other linux distros may use different names for their equivalent package and services.
+The following mcl implements the above description:
 
 ```puppet { .m-2 }
 pkg "openssh-server" {
@@ -238,6 +238,8 @@ svc "sshd" {
 Pkg["openssh-server"] -> Svc["sshd"]
 ```
 
+_Note: these examples use Fedora Linux. Other linux distros may use different names for their equivalent package and services._
+
 The syntax for arrow (`->`) relationships is: 
 
 `Kind["name"] -> Kind2["name2"]`
@@ -246,7 +248,7 @@ The _kind_ is a capitalized version of the resource name, and the string inside 
 
 ### Relationship Params: Depend and Before
 
-If it is more convenient, you may also express a relationship inside a resource definition using the params `Before` or `Depend` (capitalization is important). To express "openssh-server package must be executed before its service" we can use either of these:
+If it is more convenient, you may express a relationship inside a resource definition using the params `Before` or `Depend` (capitalization is important). These two params are available on all resources. To express "openssh-server package must be executed before its service" we can use either of these:
 
 ```puppet { .m-2 }
 pkg "openssh-server" {
@@ -271,11 +273,12 @@ Each relationship requires only one definition. That is, you can use an arrow, o
 
 All relationships have a direction, as in "A before B" or "B after A". 
 
-mgmt will not allow a relationship to create a loop, such as (A before B, B before C, C before A). A relationship loop is called a "cycle" and mgmt will report an error. Here's a simple example of a cycle:
+mgmt will not allow a relationship to create a loop, such as (A before B, B before C, C before A). A relationship loop is called a "cycle", and mgmt will report an error. Here's a simple example of a cycle:
 
 ```puppet { .m-2 }
 file "/tmp/hello.txt" { }
 file "/tmp/world.txt" { }
+
 File["/tmp/hello.txt"] -> File["/tmp/world.txt"]
 File["/tmp/world.txt"] -> File["/tmp/hello.txt"]
 ```
@@ -284,22 +287,25 @@ Visually, we can imagine it with two arrows (edges) in each direction between tw
 
 ![A diagram showing two boxes with two arrows between, each going a different direction. each box represents one resource](relationship-cycle-example.svg)
 
-Because both files want to be "before" each other, we have a loop with no beginning or end, and mgmt will show an error:
+Because both files want to be "before" each other, we have a loop with no beginning or end, and mgmt will report this error:
 
 ```text { .m-2 }
 16:53:02 gapi exited with error: not a dag
 resource graph has cycles
 ```
 
-### not a dag? cycles?
+### not a dag? graph has cycles?
 
-The visuals above show small examples of a structure called a graph, and it is how mgmt represents and executes your infrastructure. Graphs have vertexes and edges, and here's how those concepts map to what we've learned about mgmt, so far:
+The visuals above are small examples of a structure called a graph, and it is how mgmt represents and executes your infrastructure. A graph, broadly, is a network of objects, where an object is usually called a vertex and links or relationships between objects are called edges. Graphs are a [well-studied structure](https://en.wikipedia.org/wiki/Graph_theory) with a body of research that provides mgmt with a nice selection of efficient algorithms.
+
+Here's how these graph terms map to what we've learned about mgmt:
 
 * Vertex: A resource, like a file or pkg.
 * Edge: A relationship between two resources.
 * Direction: The arrow `->` operator and Before/Depend params
 
-A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a math and computer science term that describes a graph where all edges have a direction and are not allowed to form a path through the graph that allows a loop, or cycle. 
+
+A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a graph where all edges have a single direction and where  edges are not allowed to form a loop, also called a cycle.
 
 ## Programming in mgmt
 
@@ -347,7 +353,7 @@ Our _mcl_ above will produce a different resource graph depending on what machin
 
 We used the variable, `$release`, to store the result of `os.release()` function. Variables *immutable* meaning they may only be assigned once, and they are *block scoped*. Here are some examples that use variables:
 
-* Assignment: `$name = "James"`
+* Bind statement, aka assignment: `$name = "James"`
 * In a resource name: `user [$name] { ... }`
 * In a resource param: 
   ```puppet { .m-2 }
@@ -542,7 +548,7 @@ pkg [$shell] {
 
 This example demonstrates some of the very powerful capabilities of mgmt:
 
-First, your desired state is a dynamic and computed, not static! The actual resource graph will be different depending on the presence of that `.zshrc` file. More specifically, the user's shell and a package install depends on the value of `$shell` which itself is based on the presence (or not) of a `.zshrc` file in the user's home directory.
+Your desired state is a dynamic and computed, not static! The actual resource graph will be different depending on the presence of that `.zshrc` file. More specifically, the user's shell and a package install depends on the value of `$shell` which itself is based on the presence (or not) of a `.zshrc` file in the user's home directory.
 
 Second, because mgmt is a reactive programming system, the `os.file_exists()` function watches for changes and produces a new value when the file is created or deleted. This new value causes mgmt to recompute the desired state!
 
@@ -552,12 +558,11 @@ Here's what happens when we run this:
 
 #### First, nothing to change
 
-At first, this user's home directory is empty and the shell is bash, so mgmt computes our desired state, observes that the current state matches our desired state -- the user's shell should be bash -- and doesn't need to make any changes.
-
+At first, this user's home directory is empty and the shell is bash, so mgmt computes our desired state, observes that the current state matches our desired state -- the user's shell should be bash -- and doesn't make any changes.
 
 #### Second, create a .zshrc
 
-If we create a .zshrc file with `touch .zshrc`, mgmt springs into action! Our `os.file_exists()` function produces a new value, and mgmt knows to compute a new graph to to apply the new desired state:
+If this user create a .zshrc file, for example by running `touch ~/.zshrc`, mgmt springs into action! Our `os.file_exists()` function produces a new value, and mgmt computes, and applies, a new graph for the new desired state:
 
 ```text { .m-2 }
 16:16:40 gapi: generating new graph...
@@ -572,7 +577,7 @@ If we create a .zshrc file with `touch .zshrc`, mgmt springs into action! Our `o
 16:16:47 engine: user[dev]: modifying user: dev
 ```
 
-And the user's shell has been updated to be zsh:
+And the user's shell is now zsh:
 
 ```bash-session { .m-2 }
 $ getent passwd dev  | awk -F: '{print $NF}'
@@ -599,14 +604,12 @@ $ getent passwd dev  | awk -F: '{print $NF}'
 
 ## Further Reading
 
-The following are all beyond "day one" success education, so I have excluded them. This section should be structured as "Further reading" for each of these concepts:
+Congratulations! You should now be able to apply these lessons towards mgmt on your own systems. This guide's introduction is only your beginning. There are capabilities and details beyond the scope of this document that you will find useful as your mgmt expertise grows:
 
-* the type system
-* classes
-* send/recv
-* notification: Notify/Listen
-* Meta parameters
-* Exported resources
-* modules, import
-* deploy
-* etcd
+* Reusable code with [classes](../classes) and modules.
+* Sending values from one resource to another.
+* Cooperation between many mgmt instances, including exporting resources, passing values around, and [deploying mcl to a fleet](../deploys).
+* Internal mgmt resources to handle [dhcp requests](../../resources/#dhcpserver) or serve content over [http](../../resources/#httpserver) and [tftp](../../resources/#tftpserver).
+* More detail on programming in mgmt:
+  * [mcl language syntax and features](../language-features/)
+  * [values and types in mcl](../values-and-types/), including writing functions in mcl.
