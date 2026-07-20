@@ -21,23 +21,21 @@ Example mcl code should be indented with tabs. To check this, you can try this c
 
 # Welcome to mgmt config
 
-This document will guide you through your first steps learning to use mgmt while exploring its behavior and programming syntax with real examples.
+This guide is designed to teach you the concepts and syntax necessary to find success with mgmt on your first day. Towards this goal, each section of this guide introduces both concepts and related syntax that builds upon the previous sections. Therefore, we recommend that you follow this guide start to finish. Finally, the examples used in this guide are intended to be run by you, so ensure you have [mgmt installed](../getting-started/).
 
-This guide is designed to teach you the syntax and concepts necessary to find success using mgmt on your first day.
-
-We recommend that you [install mgmt](../getting-started/) and run the examples as you read this guide. For best results, run these examples on a fresh install of Fedora as that is the environment targeted by the examples below.
+Examples in this document were tested on Fedora 44, so for best results, we recommend having a fresh install of Fedora available to you. It is ok if you do not have this, though, and most of the examples should still useful.
 
 # Table of Contents 
 
 {{< toc >}}
 
 
-## Resource Basics
+## Configuration with Resources
 
 Configuration is described with an element called a **resource**.
-Most kinds of resources in mgmt will be familiar to you and are intended to align with your mental model of your infrastructure: ensuring that a package is installed, a service is disabled, or a user exists.
+Most kinds of resources in mgmt will be familiar to you and are intended to align with your mental model of your infrastructure - for example, ensuring that a package is installed, a service is disabled, or a user exists.
 
-Resources have three parts: a kind, a name, and parameters (mgmt calls these 'params'). The following example code shows a single file _resource_ written in mgmt's programming language, _mcl_:
+Resources have three parts: a kind, a name, and parameters (mgmt calls these **params**). The following example code shows a single file _resource_ written in mgmt's programming language, _mcl_:
 
 ```puppet { .m-2 }
 
@@ -72,9 +70,9 @@ When you run this, notice the following:
 * mgmt can run as any user, but that user will correct permissions in order to execute some resources.
 * The first part '10:28:48' is a timestamp, and your timestamps will be different.
 
-When all resources are in the desired state, **mgmt calls this outcome "converged".**
+When all resources are in the desired state, mgmt calls this outcome **converged**.
 
-Let's verify that our file was created correctly, and run the following in another terminal:
+Let's verify that our file was created correctly, and run the following in another terminal to view the contents of our file:
 
 ```text { .m-2 }
 $ cat /tmp/hello.txt
@@ -83,7 +81,7 @@ Greetings from mgmt!
 
 ### Continuous Convergence
 
-In the example above, mgmt stayed running even after converging. This is because mgmt continuously watches for changes (divergence) and will **react** immediately and as needed.
+In the example above, mgmt stayed running even after converging. This is because mgmt continuously watches for changes (aka divergence) and will **react** immediately and as needed.
 
 Let's explore that! While mgmt is still running, we can modify the file in another terminal and observe mgmt's immediate responses:
 
@@ -103,7 +101,7 @@ $ echo "mgmt is fast" > /tmp/hello.txt
 
 You can terminate mgmt in your terminal by pressing ctrl+c.
 
-Each time we removed or modified the file, mgmt notices that the file has diverged from its desired state, and it reacts immediately to bring the resources to the desired state.
+Each time we removed or modified the file, mgmt notices that the file has diverged from its desired state, and it reacts immediately to bring the resources to the desired state. We will see more examples of this further in the guide, including a case where the desired state itself changes!
 
 ## Resource Syntax
 
@@ -132,7 +130,7 @@ kind ["name1", "name2", "name3"] {
 http:server "127.0.0.1:8080" { }
 ```
 
-💡 _What’s in a name?_  Many resources use the name as a default value for a param. The file resource uses name as the default value for the `path` param. Check out the [resource reference](../../resources/) for details on how each resource may use the _name_.
+💡 _What’s in a name?_  Many resources use the *name* as a default value for a param. The file resource uses name as the default value for the `path` param. Check out the [resource reference](../../resources/) for details on how each resource may use the _name_.
 
 ⚠️Syntax Caution: In a resource, every param must have a trailing comma, including the last one.
 
@@ -149,13 +147,9 @@ file "a greeting" {
 mgmt has many kinds of resources, such as 
 [pkg](/docs/resources/#pkg) for packages, 
 [exec](/docs/resources/#exec) for running other programs, 
-[svc](/docs/resources/#svc) for managing service. Check out [the resources reference for more](/docs/resources/)
+[svc](/docs/resources/#svc) for managing service. Check out [the resources reference for more](/docs/resources/).
 
 Can resources be remote or only local? mgmt resources do not have a concept of local or remote. While _file_ and _pkg_ will execute locally on a machine, some resources will involve remote services, such as an ec2 instance resource. You can even export resource definitions from one mgmt to be executed by mgmt on another machine.
-
-> ⁉️Questions for the editor 
-> 
-> Question: Some resources are driven by external events (file w/ inotify), but others use timers. How frequently is a resource checked? How would the reader learn that? Should the reader not worry about it?
 
 ## More Familiar Resources
 
@@ -163,7 +157,7 @@ mgmt supports a wide variety of resources. For your first day, we'll keep focusi
 
 ### Packages
 
-Let's dive into the _pkg_ resource for managing system packages. This example also introduces two mgmt features: a behavior called "autogrouping", and an mcl syntax for lists.
+Let's dive into the [pkg](/docs/resources/#pkg) resource for managing system packages with an example that ensures two packages are installed:
 
 ```puppet { .m-2 }
 # Ensure two different packages are installed
@@ -176,9 +170,11 @@ pkg "cowsay" {
 }
 ```
 
-Package management may require root, so we can invoke mgmt with sudo to run this example, after writing the above into a file "first-package.mcl":
+_Note: Package management may require root, so we can invoke mgmt with sudo to run this example._
 
-```text { .m-2 linenos=inline }
+After writing the above example file "first-package.mcl", we run it:
+
+```text { .m-2 }
 $ sudo mgmt run lang first-package.mcl
 ... ( other output omitted for brevity ) ...
 19:00:19 engine: autogroup: pkg[cowsay] into pkg[tmux]
@@ -188,11 +184,11 @@ $ sudo mgmt run lang first-package.mcl
 19:00:25 engine: pkg[tmux]: Set(installed) success: pkg[autogroup:(tmux,cowsay)]
 ```
 
-This installed our packages, and mgmt did some extra optimization for us! In this case, mgmt knows that multiple packages can be installed in a single step, so it grouped both tmux and cowsay together. **mgmt calls this "autogrouping"**
+This installed our packages, and mgmt did some extra optimization for us! In this case, mgmt knows that multiple packages can be installed in a single step, so it grouped both tmux and cowsay together. **mgmt calls this autogrouping**
 
-You can test mgmt's reflexes by removing the `cowsay` package and watching mgmt respond by reinstalling it.
+You can test mgmt's reflexes by removing the `cowsay` package and watching mgmt respond to this divergence by reinstalling it.
 
-This example has one last important thing to share! You may configure many packages, often with the same params. In cases like this, you can provide a list of names in the _name_ part of the resource description:
+This example has one last important lesson! You may find yourself configuring multiple resources of the same kind and all with the same _params_. In cases like this, you can provide a list of names in the _name_ part of the resource description:
 
 ```puppet { .m-2 }
 pkg ["tmux", "cowsay"] {
@@ -223,11 +219,32 @@ $ sudo mgmt run lang first-service.mcl
 
 ## Resource Relationships
 
-We've seen that resources described in _mcl_ will instruct mgmt on what to observe and what the desired state is for each resource. Your desired state may include hundreds or thousands of resources.
+We've seen that resources in _mcl_ will instruct mgmt on what to observe and what the desired state is for each resource. In practice, your desired state may include hundreds or thousands of resources, and it's very likely that one resource depends on another, such as a service depending on a package that provides necessary systemd unit files.
 
-When configuring a system, you may need certain steps performed in a specific order. For example: installing a package, changing its configuration file, and ensuring the service is running — in that order! Additionally, if the service configuration changes, you want to notify the service of that change, right?
+A common example manages a service with three resources executed in exactly this order: install a package, change the configuration file, and ensuring the service is running! Additionally, if the service configuration changes, you want to notify the service of that change, right?
 
-Aside: In mgmt, **all resources are executed in concurrently**. This allows mgmt to resolve as much as possible in the shortest amount of time. There is no order unless you define order.
+In mgmt, **all resources are executed in concurrently**. This allows mgmt to resolve as much as possible in the shortest amount of time. There is no order unless you define order, and in the absence of order, we might see mgmt attempt to converge a _svc_ before its _pkg_. Here's a real example that installs the nginx package and starts the nginx system service:
+
+```puppet {.m-2}
+svc "nginx" {
+  state => "running",
+  startup => "enabled",
+} 
+
+pkg "nginx" {
+  state => "installed",
+}
+```
+
+Without expressing any order, mgmt will execute all resources simultaneously, and the result will sometimes apply the _svc_ before the _pkg_ (which provides the service files) is installed!
+
+```text {.m-2}
+17:48:52 engine: svc[nginx]: Error: failed to find svc: nginx.service
+17:48:52 engine: pkg[nginx]: Apply: pkg[nginx]
+17:48:52 engine: pkg[nginx]: Set(installed): pkg[nginx]...
+17:49:01 engine: pkg[nginx]: Set(installed) success: pkg[nginx]
+```
+
 
 You can impose order on resources by defining relationships. Relationships can be expressed two different ways, shown below, Both ways are equivalent. Use whichever is most convenient for you.
 
@@ -260,11 +277,11 @@ The syntax for arrow (`->`) relationships is:
 
 `Kind["name"] -> Kind2["name2"]`
 
-The _kind_ is a capitalized version of the resource name, and the string inside the `[brackets]` is the resource's name. 
+The _kind_ is a capitalized version of the resource name, and the `"string"` inside the `[brackets]` is the resource's name. 
 
 ### Relationship Params: Depend and Before
 
-If it is more convenient, you may express a relationship inside a resource definition using the params `Before` or `Depend` (capitalization is important). These two params are available on all resources. To express "openssh-server package must be executed before its service" we can use either of these:
+If it is more convenient, you may express a relationship inside any resource definition using the params `Before` or `Depend` (capitalization is important). To express "openssh-server package must be executed before its service" we can use either of these:
 
 ```puppet { .m-2 }
 pkg "openssh-server" {
@@ -285,11 +302,43 @@ svc "sshd" {
 
 Each relationship requires only one definition. That is, you can use an arrow, or one _Before_, or one _Depend_, for a single relationship.
 
+### Relationship Params: Listen and Notify
+
+Some relationships need more than just an order. 
+
+One example is with a pair of resources: a _file_ and a _svc_. You will want mgmt to apply a file before applying a service change, and you also want the service to be _notified_ any time that file changes, that is, whenever the service's configuration file(s) change, tell the service about it.
+
+This _notification_ relationship is expressed with either `Notify` and `Listen` params. When you want to notify a resource, you'll use `Notify` instead of `Before`, and `Listen` instead of `Depend`. 
+
+A resource responds to a _notification_ by **refreshing**. What exactly a _refresh_ does will depend on the resource, and for services, a _refresh_ causes the service to reload its configuration file.
+
+Here's what that looks like in mgmt, building on our previous nginx service and package example:
+
+```puppet {.m-2}
+svc "nginx" {
+  state => "running",
+  startup => "enabled",
+} 
+
+file "/etc/nginx/nginx.conf" {
+  content => "# this is my nginx config",
+  Depend => Pkg["nginx"]
+  Notify => Svc["nginx"],
+}
+
+pkg "nginx" {
+  state => "installed",
+}
+```
+
+The example above will ensure that the package is applied before the config file and the file before the svc. Further, if mgmt changes the file contents in the future, it will notify the svc which will cause nginx to reload its config file.
+
+
 ### Relationship Rejected: Cycles
 
 All relationships have a direction, as in "A before B" or "B after A". 
 
-mgmt will not allow a relationship to create a loop, such as (A before B, B before C, C before A). A relationship loop is called a "cycle", and mgmt will report an error. Here's a simple example of a cycle:
+Mgmt will not allow a relationship to create a loop, such as (A before B, B before C, C before A). A relationship loop is called a "cycle", and mgmt will report an error. Here's a simple example of a cycle:
 
 ```puppet { .m-2 }
 file "/tmp/hello.txt" { }
@@ -320,8 +369,13 @@ Here's how these graph terms map to what we've learned about mgmt:
 * Edge: A relationship between two resources.
 * Direction: The arrow `->` operator and Before/Depend params
 
+![the mgmt logo consisting of several blue circles with arrows linking several of them](/images/logo_default_symbol.svg "the mgmt logo")
+{style="width: 150px; float: right; border: 1px solid #bcc; border-radius: 20px" .p-2}
 
 A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a graph where all edges have a single direction and where  edges are not allowed to form a loop, also called a cycle.
+
+
+You have already seen a dag before in mgmt's logo :)
 
 ## Programming in mgmt
 
@@ -329,7 +383,7 @@ This section introduces built-in functions, variables, and conditionals. We will
 
 So far, we’ve been describing a single desired state - in essence, the resource graph has been static, or unchanging, throughout mgmt's life and remains the same no matter where it runs. Let's do more!
 
-_mcl_ allows decision-making that change the resource graph. An example above even hinted at the need for this, "other linux distros may use different names" for packages and services.
+_mcl_ allows decision-making that changes the resource graph. An example above even hinted at the need for this, "other linux distros may use different names" for packages and services.
 
 For our ssh service, Fedora calls it "sshd", and Debian calls it "ssh".
 
@@ -384,16 +438,22 @@ We used the variable, `$release`, to store the result of `os.release()` function
 
 
 ```puppet { .m-2 }
+# Binding a variable to a string value
 $ssh_service = "ssh"
+# And using a list containing that variable
 svc [$ssh_service] { ... }
+```
 
-# Or this:
+Alternately,
+
+```puppet { .m-2 }
+# Binding a variable to a list of strings 
 $ssh_service = ["ssh"]
+# And using that variable (a list) as the resource names
 svc $ssh_service { ... }
 ```
 
-
-mcl is a strongly-typed language, but there's a small exception added for convenience. A resource's _name_ is a list of strings, but a special case of a single string literal is allowed. An explanation of this follows further down in this document.
+mcl is a strongly-typed language, and it will reject attempts to use a value of the wrong type, but there's a small exception added for convenience. A resource's _name_ is a list of strings, but a special case of a single string literal is allowed. An explanation of this follows further down in this document.
 
 #### Formatting Text with Variables
 
@@ -419,7 +479,7 @@ Only string values are allowed in `"${variable}"` string interpolation, and `$po
 
 #### Scope of Variables
 
-Variables are block scoped, meaning they are not accessible outside of the block where they are assigned. A block is the stuff between `{` and `}`. mgmt will write an error message if a variable doesn't exist.
+Variables are block scoped, meaning they are not accessible outside of the block where they are bound (aka assigned). A block is the stuff between `{` and `}`. mgmt will write an error message if a variable doesn't exist.
 
 ```puppet { .m-2 }
 import "os"
@@ -467,7 +527,7 @@ svc [$ssh_service] {
 }
 ```
 
-Previously, you learned that resource definitions can accept a list of names or, for convenience, a single string literal. In our current example, we used an `if` expression to store a string in the `$ssh_service` variable, and because the _name_ parameter accepts a list of strings, we need provide a list: `[$ssh_service]`.
+Previously, you learned that resource definitions can accept a list of names or, for convenience, a single string literal. In the above example, we used an `if` expression to store a string in the `$ssh_service` variable, and because the _name_ parameter accepts a list of strings, we need provide a list: `[$ssh_service]`.
 
 Before we move on, you might wonder, what happens if we use the wrong type? Let's try that. If we forget the brackets for the resource name and use:
 
@@ -488,7 +548,7 @@ svc $ssh_service {
 
 This is mgmt explaining that we provided a _str_ where a _list_ was required.
 
-For system operators, strongly-typed languages offer a significant benefit by moving small errors into the compilation and parsing phase instead of at runtime. Mgmt rejected our mcl because we used the wrong value type, and this happens before the mcl is executed!
+For system operators, strongly-typed languages offer a significant benefit by moving small errors into the compilation phase instead of at runtime and in production. Another way to think of this is that mgmt rejects code, in full, when there's a type error. Mgmt rejected our mcl because we used the wrong value type, and this happens before the mcl is executed!
 
 ### Functions
 
@@ -541,9 +601,9 @@ In mgmt, we can do this, and this guide has prepared us for this challenge! What
 We need to:
 * Observe: detect a file's presence in a user's home directory
 * Change: configure the user's login shell on the machine
-* Change: install the shell package if needed.
+* Change: ensure the shell package is installed
 
-Recall that an mgmt resource can apply changes and that functions only observe or compute and cannot make changes. This means we'll want a resource for user and package parts, and a function for the file observation part.
+Recall that an mgmt resource can apply changes and that functions only observe or compute and cannot make changes. This means we'll want a function for the file observation and a resources for managing the user and package.
 
 ### The Implementation
 
@@ -584,11 +644,11 @@ pkg [$shell] {
 }
 ```
 
-This example demonstrates some of the very powerful capabilities of mgmt:
+This example demonstrates two very powerful capabilities of mgmt:
 
-Your desired state is a dynamic and computed, not static! The actual resource graph will be different depending on the presence of that `.zshrc` file. More specifically, the user's shell and a package install depends on the value of `$shell` which itself is based on the presence (or not) of a `.zshrc` file in the user's home directory.
+1. Your desired state is a dynamic and computed, not static! The actual resource graph will be different depending on the presence of that `.zshrc` file. More specifically, the user's shell and a package install depends on the value of `$shell` which itself is based on the presence (or not) of a `.zshrc` file in the user's home directory.
 
-Second, because mgmt is a reactive programming system, the `os.file_exists()` function watches for changes and produces a new value when the file is created or deleted. This new value causes mgmt to recompute the desired state!
+2. Because mgmt is a reactive programming system, the `os.file_exists()` function watches for changes and produces a new value when the file is created or deleted. This new value causes mgmt to recompute the desired state!
 
 ### The Result
 
@@ -596,7 +656,7 @@ Here's what happens when we run this:
 
 #### First, nothing to change
 
-At first, this user's home directory is empty and the shell is bash, so mgmt computes our desired state, observes that the current state matches our desired state -- the user's shell should be bash -- and doesn't make any changes.
+At first, this user's home directory contains no `.zshrc` and the default shell is bash. Mgmt computes our desired state, observes that the current state matches our desired state, and doesn't make any changes because the user's shell should be bash and it already is.
 
 #### Second, create a .zshrc
 
