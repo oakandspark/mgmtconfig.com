@@ -535,7 +535,7 @@ Before we move on, you might wonder, what happens if we use the wrong type? Let'
 svc $ssh_service {
 ```
 
-mgmt will report the following:
+mgmt will report the following because it cannot statically determine that `$ssh_service` is a string:
 
 ```text {.m-2}
 18:40:06 cli: lang: unification: type error: str != list: variable-scope-if-expression.mcl @ 12:1-15:2
