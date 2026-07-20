@@ -2,7 +2,13 @@
 
 ## Documentation Git Repo
 
-The source for the documentation on this website lives here: https://github.com/purpleidea/mgmtconfig.com
+The source for the documentation on this website lives here: https://github.com/purpleidea/mgmtconfig.com - You'll also need to the website theme which requires git submodules:
+
+```
+$ git clone https://github.com/purpleidea/mgmtconfig.com
+$ cd mgmtconfig.com
+$ git submodule update --init
+```
 
 ## Building & Viewing Documentation
 
