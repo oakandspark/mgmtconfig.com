@@ -55,7 +55,7 @@ With this programming model, you express the desired state for each resource, an
 
 ### Running mgmt
 
-Our _mcl_ code can be executed in mgmt: `mgmt run lang <path>`. Mgmt will normally write its logs to stdout, so the execution of our file resource will appear like this:
+Our _mcl_ code can be executed in mgmt. First, place the sample code above in a file named "hello.mcl", then run `mgmt run lang hello.mcl`. Mgmt will normally write its logs to stdout, so the execution of our file resource will appear like this:
 
 ```text { .m-2 }
 $ mgmt run lang hello.mcl
