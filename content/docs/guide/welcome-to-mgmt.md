@@ -369,7 +369,7 @@ Here's how these graph terms map to what we've learned about mgmt:
 * Edge: A relationship between two resources.
 * Direction: The arrow `->` operator and Before/Depend params
 
-![the mgmt logo consisting of several blue circles with arrows linking several of them](/images/logo_default_symbol.svg "the mgmt logo")
+![the mgmt logo consisting of several blue circles with arrows linking several of them](../../../images/logo_default_symbol.svg "the mgmt logo")
 {style="width: 150px; float: right; border: 1px solid #bcc; border-radius: 20px" .p-2}
 
 A special kind of graph called a dag is used inside mgmt. A dag, or directed acyclic graph, is a graph where all edges have a single direction and where  edges are not allowed to form a loop, also called a cycle.
