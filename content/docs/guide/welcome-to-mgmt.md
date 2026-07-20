@@ -23,7 +23,7 @@ Example mcl code should be indented with tabs. To check this, you can try this c
 
 This guide is designed to teach you the concepts and syntax necessary to find success with mgmt on your first day. Towards this goal, each section of this guide introduces both concepts and related syntax that builds upon the previous sections. Therefore, we recommend that you follow this guide start to finish. Finally, the examples used in this guide are intended to be run by you, so ensure you have [mgmt installed](../getting-started/).
 
-Examples in this document were tested on Fedora 44, so for best results, we recommend having a fresh install of Fedora available to you. It is ok if you do not have this, though, and most of the examples should still useful.
+Examples in this document were tested on Fedora 44, so for best results, we recommend having a fresh install of Fedora available to you. It is OK if you do not have this, though, and most of the examples should still useful.
 
 # Table of Contents 
 
@@ -350,7 +350,7 @@ File["/tmp/world.txt"] -> File["/tmp/hello.txt"]
 
 Visually, we can imagine it with two arrows (edges) in each direction between two resources:
 
-![A diagram showing two boxes with two arrows between, each going a different direction. each box represents one resource](relationship-cycle-example.svg)
+![A diagram showing two boxes with two arrows between, each going a different direction. Each box represents one resource](relationship-cycle-example.svg "two resources with a dependency cycle")
 
 Because both files want to be "before" each other, we have a loop with no beginning or end, and mgmt will report this error:
 
@@ -359,7 +359,7 @@ Because both files want to be "before" each other, we have a loop with no beginn
 resource graph has cycles
 ```
 
-### not a dag? graph has cycles?
+### Not a dag? Graph has cycles?
 
 The visuals above are small examples of a structure called a graph, and it is how mgmt represents and executes your infrastructure. A graph, broadly, is a network of objects, where an object is usually called a vertex and links or relationships between objects are called edges. Graphs are a [well-studied structure](https://en.wikipedia.org/wiki/Graph_theory) with a body of research that provides mgmt with a nice selection of efficient algorithms.
 
@@ -381,7 +381,7 @@ You have already seen a dag before in mgmt's logo :)
 
 This section introduces built-in functions, variables, and conditionals. We will use those features to program mgmt to handle differences between Linux distributions.
 
-So far, we’ve been describing a single desired state - in essence, the resource graph has been static, or unchanging, throughout mgmt's life and remains the same no matter where it runs. Let's do more!
+So far, we've been describing a single desired state - in essence, the resource graph has been static, or unchanging, throughout mgmt's life and remains the same no matter where it runs. Let's do more!
 
 _mcl_ allows decision-making that changes the resource graph. An example above even hinted at the need for this, "other linux distros may use different names" for packages and services.
 
