@@ -1,4 +1,8 @@
-# Contributiong to the Documentation
+# Contributing to the Documentation
+
+## Documentation Git Repo
+
+The source for the documentation on this website lives here: https://github.com/purpleidea/mgmtconfig.com
 
 ## Building & Viewing Documentation
 
